@@ -1,10 +1,9 @@
 package main
 
 import (
-	"context"
 	"l3/CommentTree/internal/appcfg"
+	"l3/CommentTree/internal/handler"
 	"log"
-	"time"
 
 	"github.com/wb-go/wbf/dbpg"
 	"github.com/wb-go/wbf/ginext"
@@ -28,6 +27,7 @@ func main() {
 		MaxIdleConns:    cfg.PostgresConfig.MaxIdleConns,
 		ConnMaxLifetime: cfg.PostgresConfig.ConnMaxLifetime,
 	}
+
 	db, err := dbpg.New(cfg.PostgresConfig.MasterDSN, cfg.PostgresConfig.SlaveDSNs, opts)
 	if err != nil {
 		log.Fatal(err)
@@ -35,21 +35,9 @@ func main() {
 
 	r := ginext.New("release")
 	r.Use(ginext.Logger(), ginext.Recovery())
-	r.GET("/health", func(c *ginext.Context) {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
 
-		var res int
-		err := db.QueryRowContext(ctx, "select 1").Scan(&res)
-		if err != nil {
-			c.JSON(500, ginext.H{
-				"status": "error",
-				"error":  err.Error(),
-			})
-			return
-		}
-		c.JSON(200, ginext.H{"status": "ok"})
-	})
+	handler.Register(r, handler.Deps{DB: db})
+	
 	zlog.Logger.Info().Str("addr", cfg.ServerConfig.Addr).Msg("starting server")
 	log.Fatal(r.Run(cfg.ServerConfig.Addr))
 }
