@@ -7,28 +7,30 @@ import (
 	"github.com/wb-go/wbf/config"
 )
 
-type appConfig struct {
-	serverConfig   serverConfig
-	loggerConfig   loggerConfig
-	postgresConfig postgresConfig
+type AppConfig struct {
+	ServerConfig   ServerConfig
+	LoggerConfig   LoggerConfig
+	PostgresConfig PostgresConfig
 }
 
-type serverConfig struct {
-	addr string
+type ServerConfig struct {
+	Addr string
 }
 
-type loggerConfig struct {
-	logLevel string
+type LoggerConfig struct {
+	LogLevel string
 }
 
-type postgresConfig struct {
-	maxOpenConns    int
-	maxIdleConns    int
-	connMaxLifetime time.Duration
-	port            int
+type PostgresConfig struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	Port            int
+	MasterDSN       string
+	SlaveDSNs       []string
 }
 
-func NewAppConfig() (*appConfig, error) {
+func NewAppConfig() (*AppConfig, error) {
 	envFilePath := "../../.env"                            //"./.env-example"
 	appConfigFilePath := "../../app-config.yaml"           //"./config-example1.yaml"
 	postgresConfigFilePath := "../../postgres-config.yaml" //"./config-example2.yaml"
@@ -49,20 +51,25 @@ func NewAppConfig() (*appConfig, error) {
 	}
 
 	// Определение флагов командной строки
-	cfg.DefineFlag("p", "srvport", "transport.http.port", 7777, "HTTP server port")
+	err := cfg.DefineFlag("p", "srvport", "transport.http.port", 7777, "HTTP server port")
+	if err != nil {
+		return nil, fmt.Errorf("failed to define flags: %w", err)
+
+	}
 	if err := cfg.ParseFlags(); err != nil {
 		return nil, fmt.Errorf("failed to pars flags: %w", err)
 	}
 
 	// Распаковка в структуру
-	var appConfig appConfig
-	appConfig.serverConfig.addr = cfg.GetString("server.addr")
-	appConfig.loggerConfig.logLevel = cfg.GetString("logger.level")
-	appConfig.loggerConfig.logLevel = cfg.GetString("logger.level")
-	appConfig.postgresConfig.maxOpenConns = cfg.GetInt("postgres.max_open_conns")
-	appConfig.postgresConfig.maxIdleConns = cfg.GetInt("postgres.max_idle_conns")
-	appConfig.postgresConfig.connMaxLifetime = cfg.GetDuration("postgres.conn_max_lifetime")
-	appConfig.postgresConfig.port = cfg.GetInt("postgres.port") // из переменной окружения (из файла .env)
+	var appConfig AppConfig
+	appConfig.ServerConfig.Addr = cfg.GetString("server.addr")
+	appConfig.LoggerConfig.LogLevel = cfg.GetString("logger.level")
+	appConfig.PostgresConfig.MaxOpenConns = cfg.GetInt("postgres.max_open_conns")
+	appConfig.PostgresConfig.MaxIdleConns = cfg.GetInt("postgres.max_idle_conns")
+	appConfig.PostgresConfig.ConnMaxLifetime = cfg.GetDuration("postgres.conn_max_lifetime")
+	appConfig.PostgresConfig.Port = cfg.GetInt("postgres.port") // из переменной окружения (из файла .env)
+	appConfig.PostgresConfig.MasterDSN = cfg.GetString("postgres.master_dsn")
+	appConfig.PostgresConfig.SlaveDSNs = cfg.GetStringSlice("postgres.slave_dsns")
 
 	return &appConfig, nil
 }
