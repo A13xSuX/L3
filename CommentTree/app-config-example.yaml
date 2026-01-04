@@ -1,0 +1,5 @@
+server:
+  addr: ":7777"
+
+logger:
+  level: "info"
