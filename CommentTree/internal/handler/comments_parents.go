@@ -37,9 +37,7 @@ func GetCommentsTree(deps Deps) ginext.HandlerFunc {
 				  SELECT id, parent_id, text, created_at
 				  FROM comments
 				  WHERE id = $1
-				
 				  UNION ALL
-				
 				  SELECT c.id, c.parent_id, c.text, c.created_at
 				  FROM comments c
 				  JOIN tree t ON c.parent_id = t.id
