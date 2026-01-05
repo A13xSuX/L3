@@ -15,4 +15,5 @@ func Register(r *ginext.Engine, deps Deps) {
 	r.GET("/comments", GetCommentsTree(deps))
 	r.DELETE("/comments/:id", DeleteComment(deps))
 	r.GET("/comments/search", SearchComments(deps))
+	r.GET("/comments/tree", CommentsTree(deps))
 }
