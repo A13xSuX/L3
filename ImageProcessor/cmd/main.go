@@ -32,6 +32,7 @@ func main() {
 	r.POST("/upload", uploadMultipleFile(baseDir))
 	r.GET("/", template())
 	r.GET("/image/:id", getImage(baseDir))
+	r.DELETE("/image/:id", deleteImage(baseDir))
 
 	//create fs
 	err := os.MkdirAll(baseDir, os.ModePerm)
@@ -111,9 +112,38 @@ func getImage(baseDir string) ginext.HandlerFunc { //потом заменим �
 		pathOut := filepath.Join(baseDir, idStr)
 		_, err := os.Stat(pathOut)
 		if err != nil {
-			c.JSON(http.StatusNotFound, ginext.H{"status": "error", "message": err.Error()})
+			if os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, ginext.H{"status": "error", "message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusBadRequest, ginext.H{"status": "error", "message": err.Error()})
 			return
 		}
 		c.File(pathOut)
+	}
+}
+
+func deleteImage(baseDir string) ginext.HandlerFunc {
+	return func(c *ginext.Context) {
+		idStr := c.Param("id")
+		if idStr == "" {
+			c.JSON(http.StatusBadRequest, ginext.H{"status": "error", "message": "invalid id"})
+			return
+		}
+		if strings.Contains(idStr, "/") || strings.Contains(idStr, "\\") || strings.Contains(idStr, "..") {
+			c.JSON(http.StatusBadRequest, ginext.H{"status": "error", "message": "invalid id"})
+			return
+		}
+		deletePath := filepath.Join(baseDir, idStr)
+		err := os.Remove(deletePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, ginext.H{"status": "error", "message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, ginext.H{"status": "error", "error": err.Error()})
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
 }
