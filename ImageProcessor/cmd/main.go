@@ -1,47 +1,75 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"l3/ImageProcessor/internal/appcfg"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/wb-go/wbf/dbpg"
 	"github.com/wb-go/wbf/ginext"
 	"github.com/wb-go/wbf/zlog"
 )
 
-//прием изображения
-//кладем в kafka
-// в фоне обрабатываем файл(resize/watermark) параллельно
-
-//можно создать папку(fs) туда будем класть фотки и оттуда можно будем нормально их доставать
-
-//Пока все в одном файле
-
 func main() {
+	cfg, err := appcfg.NewAppConfig()
+	if err != nil {
+		zlog.Logger.Error().Err(err)
+		return
+	}
+
+	opts := &dbpg.Options{MaxOpenConns: cfg.PostgresConfig.MaxOpenConns,
+		MaxIdleConns:    cfg.PostgresConfig.MaxIdleConns,
+		ConnMaxLifetime: cfg.PostgresConfig.ConnMaxLifeTime,
+	}
+	db, err := dbpg.New(cfg.PostgresConfig.MasterDSN, cfg.PostgresConfig.SlaveDSN, opts)
+	if err != nil {
+		zlog.Logger.Error().Err(err)
+		return
+	}
+
 	path := filepath.Join("..", "web", "*")
 	baseDir := filepath.Join(".", "out")
 	zlog.InitConsole()
-	_ = zlog.SetLevel("debug")
+	_ = zlog.SetLevel(cfg.LoggerConfig.LogLevel)
 	r := ginext.New("release")
 	r.LoadHTMLGlob(path)
 	r.Use(ginext.Logger(), ginext.Recovery()) //logs of gin
+	r.GET("/healthz", func() ginext.HandlerFunc {
+		return func(c *ginext.Context) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			var res string
+			err := db.QueryRowContext(ctx, "SELECT 1").Scan(&res)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, ginext.H{
+					"status": "error",
+					"error":  err.Error(),
+				})
+				return
+			}
+			c.JSON(http.StatusOK, ginext.H{"status": "ok"})
+		}
+	}())
 	r.POST("/upload", uploadMultipleFile(baseDir))
 	r.GET("/", template())
 	r.GET("/image/:id", getImage(baseDir))
 	r.DELETE("/image/:id", deleteImage(baseDir))
 
 	//create fs
-	err := os.MkdirAll(baseDir, os.ModePerm)
+	err = os.MkdirAll(baseDir, os.ModePerm)
 	if err != nil {
 		zlog.Logger.Error().Err(err).Msg("Filesystem is not created")
 		return
 	}
 
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(cfg.ServerConfig.Addr); err != nil {
 		zlog.Logger.Error().Msg("Server is down")
 		return
 	}
