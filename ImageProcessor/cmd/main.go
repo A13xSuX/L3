@@ -59,41 +59,45 @@ func uploadMultipleFile(baseDir string) ginext.HandlerFunc {
 			return
 		}
 		files := form.File["images"]
-		filePaths := []string{}
+		ids := []string{}
 		for _, file := range files {
 			fileExt := filepath.Ext(file.Filename)
 			switch fileExt {
 			case ".png":
-				originalFileName := strings.TrimSuffix(filepath.Base(file.Filename), fileExt)
-				now := time.Now()
-				filename := strings.ReplaceAll(strings.ToLower(originalFileName), " ", "_") + "" + fmt.Sprintf("%v", now.Unix()) + fileExt
-				filePaths = append(filePaths, filename)
-				out, err := os.Create(filepath.Join(baseDir, filename))
-				if err != nil {
-					zlog.Logger.Error().Msg("Не удалось создать файл")
-					return
-				}
-				defer out.Close()
+				func() {
+					originalFileName := strings.TrimSuffix(filepath.Base(file.Filename), fileExt)
 
-				readerFile, err := file.Open()
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, ginext.H{"status": "error", "message": "open file is crashed"})
-					return
-				}
-				_, err = io.Copy(out, readerFile)
-				if err != nil {
-					zlog.Logger.Error().Err(err).Msg("Не удалось сохранить файл")
-					return
-				}
-				zlog.Logger.Info().Msg("Файлы успешно скачаны")
+					now := time.Now()
+					filename := strings.ReplaceAll(strings.ToLower(originalFileName), " ", "_") + "" + fmt.Sprintf("%v", now.Unix()) + fileExt
+					ids = append(ids, filename)
+					out, err := os.Create(filepath.Join(baseDir, filename))
+					if err != nil {
+						zlog.Logger.Error().Msg("Не удалось создать файл")
+						return
+					}
+					defer out.Close()
+
+					readerFile, err := file.Open()
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, ginext.H{"status": "error", "message": "open file is crashed"})
+						return
+					}
+					defer readerFile.Close()
+					_, err = io.Copy(out, readerFile)
+					if err != nil {
+						zlog.Logger.Error().Err(err).Msg("Не удалось сохранить файл")
+						return
+					}
+					zlog.Logger.Info().Msg("Файлы успешно скачаны")
+				}()
 
 			default:
 				c.JSON(http.StatusBadRequest, ginext.H{"status": "error", "message": "invalid format file, only PNG"})
 				return
 			}
 		}
-		c.JSON(http.StatusOK, ginext.H{
-			"filepath": filePaths,
+		c.JSON(http.StatusCreated, ginext.H{
+			"ids": ids,
 		})
 	}
 }
@@ -116,7 +120,7 @@ func getImage(baseDir string) ginext.HandlerFunc { //потом заменим �
 				c.JSON(http.StatusNotFound, ginext.H{"status": "error", "message": err.Error()})
 				return
 			}
-			c.JSON(http.StatusBadRequest, ginext.H{"status": "error", "message": err.Error()})
+			c.JSON(http.StatusInternalServerError, ginext.H{"status": "error", "message": err.Error()})
 			return
 		}
 		c.File(pathOut)
