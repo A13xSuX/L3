@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    <style>
+        .file-upload{
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .file-upload .file-upload__area{
+            width : 600px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ccc;
+            margin-top: 40px;
+        }
+        .file-preview-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px auto 20px;
+        }
+        .file-preview {
+            display: grid;
+            max-width: 1000px;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        .file-preview .file-preview__el {
+            border: 2px dashed rgb(112, 102, 245);
+            padding: 5px;
+            max-height: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .file-preview .file-preview__el .file-preview__img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+            background: #222;
+        }
+        .file-preview__meta {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            word-break: break-all;
+            opacity: 0.85;
+        }
+        .file-preview__status {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+        .file-preview__status.processing {
+            color: #ffb300;
+        }
+        .file-preview__status.ready {
+            color: #4caf50;
+        }
+        .file-preview__status.failed {
+            color: #f44336;
+        }
+        .file-preview__btn {
+            cursor: pointer;
+            border: 1px solid #ddd;
+            background: #fff;
+            padding: 6px 8px;
+            border-radius: 6px;
+        }
+        .file-preview__btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+    <title>Image Processing</title>
+</head>
+<body>
+<div class="file-preview-container">
+    <div class="file-preview" id="file-preview"></div>
+</div>
+<div class="file-upload">
+    <div class="file-upload__area">
+        <h3>Upload</h3>
+        <input type="file" id="mulitple_files_upload" multiple />
+    </div>
+</div>
+<script>
+    const SERVER_ENDPOINT = "http://localhost:8080";
+    const IMAGE_PREVIEW = document.getElementById("file-preview");
+    const INPUT = document.getElementById("mulitple_files_upload");
+    const POLL_INTERVAL = 2000;
+
+    const imagesState = new Map();
+
+    function createImageCard(id) {
+        const imgHolder = document.createElement("div");
+        imgHolder.classList.add("file-preview__el");
+
+        const imgElement = document.createElement("img");
+        imgElement.classList.add("file-preview__img");
+        imgElement.alt = id;
+        imgElement.src = "";
+
+        const statusEl = document.createElement("div");
+        statusEl.classList.add("file-preview__status", "processing");
+        statusEl.textContent = "в обработке...";
+
+        const meta = document.createElement("div");
+        meta.classList.add("file-preview__meta");
+        meta.textContent = id;
+
+        const btn = document.createElement("button");
+        btn.classList.add("file-preview__btn");
+        btn.textContent = "Delete";
+
+        btn.addEventListener("click", async () => {
+            btn.disabled = true;
+            btn.textContent = "Deleting";
+
+            try {
+                const res = await fetch(`${SERVER_ENDPOINT}/image/${encodeURIComponent(id)}`, {
+                    method: "DELETE",
+                });
+
+                if (res.status === 204 || res.status === 404) {
+                    clearImage(id);
+                    return;
+                }
+
+                let msg = `Delete failed (status ${res.status})`;
+                try {
+                    const data = await res.json();
+                    msg = data.message || data.error || msg;
+                } catch (_) {}
+                alert(msg);
+            } catch (e) {
+                alert(e.message || "Network error");
+            } finally {
+                if (imagesState.has(id)) {
+                    btn.disabled = false;
+                    btn.textContent = "Delete";
+                }
+            }
+        });
+
+        imgHolder.appendChild(imgElement);
+        imgHolder.appendChild(statusEl);
+        imgHolder.appendChild(meta);
+        imgHolder.appendChild(btn);
+
+        const intervalId = setInterval(() => pollStatus(id, imgElement, statusEl), POLL_INTERVAL);
+        imagesState.set(id, { intervalId, cardEl: imgHolder });
+
+        return imgHolder;
+    }
+
+    async function pollStatus(id, imgElement, statusEl) {
+        try {
+            const res = await fetch(`${SERVER_ENDPOINT}/image/${encodeURIComponent(id)}/meta`);
+            if (res.status === 404) {
+                clearImage(id);
+                return;
+            }
+            if (!res.ok) {
+                return;
+            }
+            const data = await res.json();
+
+            if (data.status === "queued" || data.status === "processing") {
+                statusEl.className = "file-preview__status processing";
+                statusEl.textContent = "в обработке...";
+                return;
+            }
+
+            if (data.status === "failed") {
+                statusEl.className = "file-preview__status failed";
+                statusEl.textContent = "ошибка: " + (data.error || "unknown");
+                clearIntervalFor(id);
+                return;
+            }
+
+            if (data.status === "ready") {
+                statusEl.className = "file-preview__status ready";
+                statusEl.textContent = "готово";
+                imgElement.src = `${SERVER_ENDPOINT}/image/${encodeURIComponent(id)}`;
+                clearIntervalFor(id);
+            }
+        } catch (e) {
+            // разовые ошибки пропускаем
+        }
+    }
+
+    function clearIntervalFor(id) {
+        const state = imagesState.get(id);
+        if (state && state.intervalId) {
+            clearInterval(state.intervalId);
+            state.intervalId = null;
+        }
+    }
+
+    function clearImage(id) {
+        const state = imagesState.get(id);
+        if (!state) return;
+        clearIntervalFor(id);
+        if (state.cardEl && state.cardEl.parentNode) {
+            state.cardEl.parentNode.removeChild(state.cardEl);
+        }
+        imagesState.delete(id);
+    }
+
+    INPUT.addEventListener("change", async (event) => {
+        try {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const formData = new FormData();
+            for (const file of files) {
+                formData.append("images", file);
+            }
+
+            const res = await fetch(`${SERVER_ENDPOINT}/upload`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.message || err.error || `Upload failed (${res.status})`);
+                return;
+            }
+
+            const data = await res.json();
+            const ids = data.ids || [];
+            ids.forEach((id) => {
+                const card = createImageCard(id);
+                IMAGE_PREVIEW.appendChild(card);
+            });
+
+            INPUT.value = "";
+        } catch (error) {
+            alert(error.message || "Upload failed");
+        }
+    });
+</script>
+</body>
+</html>
