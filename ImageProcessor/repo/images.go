@@ -31,6 +31,12 @@ func NewImagesRepo(db *dbpg.DB) *ImagesRepo {
 	return &ImagesRepo{db: db}
 }
 
+func (r *ImagesRepo) Healthz(ctx context.Context) error {
+	var res string
+	err := r.db.QueryRowContext(ctx, "SELECT 1").Scan(&res)
+	return err
+}
+
 func (r *ImagesRepo) Create(ctx context.Context, id uuid.UUID, originalPath string) error {
 	const q = `
 	INSERT INTO images (id, status, original_path)
@@ -138,4 +144,37 @@ func (r *ImagesRepo) Delete(ctx context.Context, id uuid.UUID) error {
 		return ErrNotFound
 	}
 	return nil
+}
+func (r *ImagesRepo) DequeueQueued(ctx context.Context) (*Image, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	const q = `SELECT id, status, original_path, processed_path, thumb_path, error, created_at, updated_at 
+		FROM images
+		WHERE status = 'queued'
+		ORDER BY created_at
+		FOR UPDATE SKIP LOCKED LIMIT 1`
+
+	var img Image
+	err = tx.QueryRowContext(ctx, q).Scan(
+		&img.ID,
+		&img.Status,
+		&img.OriginalPath,
+		&img.ProcessedPath,
+		&img.ThumbPath,
+		&img.Error,
+		&img.CreatedAt,
+		&img.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &img, nil
 }

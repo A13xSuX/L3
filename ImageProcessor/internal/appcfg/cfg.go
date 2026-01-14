@@ -32,7 +32,11 @@ type PostgresConfig struct {
 }
 
 // TODO
-type KafkaConfig struct{}
+type KafkaConfig struct {
+	Brokers []string
+	Topic   string
+	GroupID string
+}
 
 func NewAppConfig() (*AppConfig, error) {
 	//only env file
@@ -55,6 +59,8 @@ func NewAppConfig() (*AppConfig, error) {
 	appConfig.PostgresConfig.Port = cfg.GetInt("postgres.port")
 	appConfig.PostgresConfig.MasterDSN = cfg.GetString("postgres.master_dsn")
 	appConfig.PostgresConfig.SlaveDSN = cfg.GetStringSlice("postgres.slave")
-	//kafka
+	appConfig.KafkaConfig.Brokers = cfg.GetStringSlice("kafka.brokers")
+	appConfig.KafkaConfig.Topic = cfg.GetString("kafka.topic")
+	appConfig.KafkaConfig.GroupID = cfg.GetString("kafka.group_id")
 	return &appConfig, nil
 }
