@@ -1,7 +1,0 @@
-postgres:
-  max_open_conns: 5
-  max_idle_conns: 3
-  conn_max_life_time: 10s
-  port: 5432
-  master_DSN: "мастер"
-  slave_DSN: []
