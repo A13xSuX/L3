@@ -3,6 +3,8 @@ package customErrs
 import "errors"
 
 var (
+	ErrBookingCancelled        = errors.New("book has cancelled")
+	ErrInvalidBookingID        = errors.New("invalid bookingID")
 	ErrInvalidEventID          = errors.New("invalid eventID")
 	ErrInvalidUsername         = errors.New("invalid username")
 	ErrEventNotFound           = errors.New("event not found")

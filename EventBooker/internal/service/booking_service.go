@@ -77,3 +77,50 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 	}
 	return booking, nil
 }
+
+func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
+	if len(bookingID) == 0 {
+		return customErrs.ErrInvalidBookingID
+	}
+	//TODO options
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	//TODO
+	booking, err := s.bookingRepo.GetByIDForUpdateTx(ctx, tx, bookingID)
+
+	if booking == nil {
+		return customErrs.ErrBookingNotFound
+	}
+	if booking.Status == "confirmed" {
+		return customErrs.ErrBookingAlreadyConfirmed
+	}
+	if booking.Status == "cancelled" {
+		return customErrs.ErrBookingCancelled
+	}
+	//TODO is it correct logic?
+	if booking.ExpiredAt != nil && booking.ExpiredAt.Before(time.Now()) {
+		return customErrs.ErrBookingExpired
+	}
+	//TODO
+	//event, err := s.eventRepo.GetByID(ctx, booking.EventID)
+	//if err != nil {
+	//	return err
+	//}
+	////check on amount of cost(mb)
+	//if event == nil {
+	//	return customErrs.ErrEventNotFound
+	//}
+	err = s.bookingRepo.UpdateStatusTx(ctx, tx, bookingID, "confirmed", ptrTime(time.Now()))
+	booking.ExpiredAt = nil
+	//TODO continue here
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+//for cancel

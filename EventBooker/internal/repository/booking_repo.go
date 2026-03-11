@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"l3/EventBooker/internal/customErrs"
 	"l3/EventBooker/internal/models"
 	"time"
 
@@ -50,7 +52,7 @@ func (r *BookingRepository) GetByID(ctx context.Context, id string) (*models.Boo
 	)
 	if err != nil {
 		//TODO err?
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -128,4 +130,50 @@ func (r *BookingRepository) CreateTx(ctx context.Context, tx *sql.Tx, booking *m
 		booking.ExpiredAt,
 	)
 	return row.Scan(&booking.ID)
+}
+
+func (r *BookingRepository) GetByIDForUpdateTx(ctx context.Context, tx *sql.Tx, id string) (*models.Booking, error) {
+	query := `SELECT id, event_id, username, created_at, expired_at,confirmed_at FROM bookings
+			WHERE id = $1
+			FOR UPDATE`
+	var booking models.Booking
+	row := tx.QueryRowContext(ctx, query, id)
+	err := row.Scan(
+		&booking.ID,
+		&booking.EventID,
+		&booking.Username,
+		&booking.CreatedAt,
+		&booking.ExpiredAt,
+		&booking.ConfirmedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &booking, nil
+}
+
+func (r *BookingRepository) UpdateStatusTx(ctx context.Context, tx *sql.Tx, id string, status string, confirmedAt *time.Time) error {
+	query := `UPDATE bookings
+			SET status = $1, confirmed_at = $2, expired_at = NULL
+			WHERE id = $3`
+
+	result, err := tx.ExecContext(ctx, query, status, confirmedAt, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		//TODO может кастомную реализовать
+		return customErrs.ErrBookingNotFound
+	}
+
+	return nil
 }
