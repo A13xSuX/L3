@@ -20,6 +20,6 @@ type Booking struct {
 	Username    string     `json:"username" db:"username"`
 	Status      string     `json:"status" db:"status"`
 	CreatedAt   time.Time  `json:"createdAt" db:"createdAt"`
-	ExpiredAt   time.Time  `json:"expiredAt" db:"expiredAt"`
+	ExpiredAt   *time.Time `json:"expiredAt" db:"expiredAt"`
 	ConfirmedAt *time.Time `json:"confirmed_at" db:"confirmed_at"`
 }
