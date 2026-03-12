@@ -94,7 +94,7 @@ func (r *BookingRepository) GetExpiredBookings(ctx context.Context) ([]models.Bo
 	defer rows.Close()
 
 	var expiredBooking []models.Booking
-
+	
 	for rows.Next() {
 		var booking models.Booking
 		err = rows.Scan(
@@ -176,4 +176,39 @@ func (r *BookingRepository) UpdateStatusTx(ctx context.Context, tx *sql.Tx, id s
 	}
 
 	return nil
+}
+
+func (r *BookingRepository) GetByEventID(ctx context.Context, eventID string) ([]models.Booking, error) {
+	query := `SELECT id, event_id, username, status, created_at, expired_at, confirmed_at 
+				FROM bookings WHERE event_id = $1
+				ORDER BY created_at DESC `
+
+	var bookings []models.Booking
+	rows, err := r.db.QueryContext(ctx, query, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var booking models.Booking
+		err = rows.Scan(
+			&booking.ID,
+			&booking.EventID,
+			&booking.Username,
+			&booking.Status,
+			&booking.CreatedAt,
+			&booking.ExpiredAt,
+			&booking.ConfirmedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		bookings = append(bookings, booking)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return bookings, nil
 }

@@ -97,8 +97,8 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 	if booking.Status == "confirmed" {
 		return customErrs.ErrBookingAlreadyConfirmed
 	}
-	if booking.Status == "cancelled" {
-		return customErrs.ErrBookingCancelled
+	if booking.Status == "canceled" {
+		return customErrs.ErrBookingCanceled
 	}
 	//TODO is it correct logic?
 	if booking.ExpiredAt != nil && booking.ExpiredAt.Before(time.Now()) {
@@ -123,4 +123,34 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 	return nil
 }
 
-//for cancel
+func (s *BookingService) GetEventWithDetails(ctx context.Context, eventID string) (*models.EventsWithDetails, error) {
+	if len(eventID) == 0 {
+		return nil, customErrs.ErrInvalidEventID
+	}
+
+	event, err := s.eventRepo.GetByID(ctx, eventID)
+	if err != nil {
+		//TODO прочекать та ли ошибка
+		return nil, err
+	}
+	if event == nil {
+		return nil, customErrs.ErrEventNotFound
+	}
+	bookings, err := s.bookingRepo.GetByEventID(ctx, event.ID)
+	if err != nil {
+		return nil, err
+	}
+	var totalBooked int
+	for _, b := range bookings {
+		if b.Status == "pending" || b.Status == "confirmed" {
+			totalBooked++
+		}
+	}
+	details := &models.EventsWithDetails{
+		Event:       event,
+		Bookings:    bookings,
+		FreeSeats:   event.AvailableSeats,
+		TotalBooked: totalBooked,
+	}
+	return details, nil
+}

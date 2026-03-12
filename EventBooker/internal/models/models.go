@@ -23,3 +23,10 @@ type Booking struct {
 	ExpiredAt   *time.Time `json:"expiredAt" db:"expiredAt"`
 	ConfirmedAt *time.Time `json:"confirmed_at" db:"confirmed_at"`
 }
+
+type EventsWithDetails struct {
+	Event       *Event
+	Bookings    []Booking
+	FreeSeats   int
+	TotalBooked int
+}

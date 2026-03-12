@@ -150,6 +150,7 @@ func (r *EventRepository) GetByIDForUpdateTx(ctx context.Context, tx *sql.Tx, id
 	return &event, nil
 }
 
+// TODO rename newSeats to delta
 func (r *EventRepository) UpdateSeatsTx(ctx context.Context, tx *sql.Tx, eventID string, newSeats int) error {
 	query := `UPDATE events
 			  SET available_seats = available_seats + $1
