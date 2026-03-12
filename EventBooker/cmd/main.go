@@ -3,8 +3,12 @@ package main
 import (
 	"fmt"
 	"l3/EventBooker/internal/appcfg"
+	"l3/EventBooker/internal/handlers"
+	"l3/EventBooker/internal/repository"
+	"l3/EventBooker/internal/service"
 
 	"github.com/wb-go/wbf/dbpg"
+	"github.com/wb-go/wbf/ginext"
 	"github.com/wb-go/wbf/zlog"
 )
 
@@ -27,5 +31,23 @@ func main() {
 		return
 	}
 
-	fmt.Println(cfg)
+	//init
+	eventRepo := repository.NewEventRepository(db)
+	bookingRepo := repository.NewBookingRepo(db)
+	bookingService := service.NewBookingService(db, eventRepo, bookingRepo)
+
+	eventHandler := handlers.NewEventHandler(bookingService)
+
+	//replace release
+	router := ginext.New("debug")
+
+	router.GET("/events", eventHandler.GetAllEvents)
+	router.POST("/events", eventHandler.CreateEvent)
+	router.POST("/events/:id/book", eventHandler.Book)
+	router.POST("/events/:id/confirm", eventHandler.Confirm)
+	router.GET("/events/:id", eventHandler.GetEventWithDetails)
+
+	if err = router.Run(":8080"); err != nil {
+		zlog.Logger.Fatal().Err(err).Msg("Server failed to start")
+	}
 }

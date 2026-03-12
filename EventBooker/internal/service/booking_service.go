@@ -24,6 +24,14 @@ func NewBookingService(db *dbpg.DB, eventRepo *repository.EventRepository, booki
 	}
 }
 
+func (s *BookingService) GetAllEvents(ctx context.Context) ([]models.Event, error) {
+	return s.eventRepo.GetAll(ctx)
+}
+
+func (s *BookingService) CreateEvent(ctx context.Context, event *models.Event) error {
+	return s.eventRepo.Create(ctx, event)
+}
+
 func (s *BookingService) Book(ctx context.Context, eventID, username string) (*models.Booking, error) {
 	if len(eventID) == 0 {
 		return nil, customErrs.ErrInvalidEventID
