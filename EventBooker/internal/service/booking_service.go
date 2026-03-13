@@ -4,23 +4,28 @@ import (
 	"context"
 	"l3/EventBooker/internal/customErrs"
 	"l3/EventBooker/internal/models"
+	"l3/EventBooker/internal/producer"
 	"l3/EventBooker/internal/repository"
 	"time"
 
 	"github.com/wb-go/wbf/dbpg"
+	"github.com/wb-go/wbf/retry"
+	"github.com/wb-go/wbf/zlog"
 )
 
 type BookingService struct {
 	db          *dbpg.DB
 	eventRepo   *repository.EventRepository
 	bookingRepo *repository.BookingRepository
+	kafkaProd   *producer.Producer
 }
 
-func NewBookingService(db *dbpg.DB, eventRepo *repository.EventRepository, bookingRepo *repository.BookingRepository) *BookingService {
+func NewBookingService(db *dbpg.DB, eventRepo *repository.EventRepository, bookingRepo *repository.BookingRepository, kafkaProd *producer.Producer) *BookingService {
 	return &BookingService{
 		db:          db,
 		eventRepo:   eventRepo,
 		bookingRepo: bookingRepo,
+		kafkaProd:   kafkaProd,
 	}
 }
 
@@ -67,7 +72,7 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 		Username:  username,
 		Status:    "pending",
 		CreatedAt: time.Now(),
-		ExpiredAt: ptrTime(time.Now().Add(15 * time.Minute)),
+		ExpiredAt: ptrTime(time.Now().Add(1 * time.Minute)),
 	}
 	if !event.PaymentRequired {
 		booking.Status = "confirmed"
@@ -82,6 +87,26 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 	}
 	if err = tx.Commit(); err != nil {
 		return nil, err
+	}
+	if event.PaymentRequired {
+		go func() {
+			ctx := context.Background()
+			//todo с конфига
+			strategy := retry.Strategy{
+				Attempts: 3,
+				Delay:    100 * time.Millisecond,
+				Backoff:  2.0,
+			}
+
+			msg := producer.ExpirationMessage{
+				BookingID: booking.ID,
+				EventID:   eventID,
+				ExpiresAt: *booking.ExpiredAt,
+			}
+			if err := s.kafkaProd.SendExpirationMessageWithRetry(ctx, msg, strategy); err != nil {
+				zlog.Logger.Error().Err(err).Msg("Failed to send message in queue")
+			}
+		}()
 	}
 	return booking, nil
 }

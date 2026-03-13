@@ -1,11 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"l3/EventBooker/internal/appcfg"
 	"l3/EventBooker/internal/handlers"
+	"l3/EventBooker/internal/producer"
 	"l3/EventBooker/internal/repository"
+	"l3/EventBooker/internal/scheduler"
 	"l3/EventBooker/internal/service"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/wb-go/wbf/dbpg"
 	"github.com/wb-go/wbf/ginext"
@@ -34,7 +41,26 @@ func main() {
 	//init
 	eventRepo := repository.NewEventRepository(db)
 	bookingRepo := repository.NewBookingRepo(db)
-	bookingService := service.NewBookingService(db, eventRepo, bookingRepo)
+
+	brokers := []string{"localhost:9092"}
+	topic := "booking-expirations"
+	kafkaProd := producer.NewProducer(brokers, topic)
+	defer kafkaProd.Close()
+	bookingService := service.NewBookingService(db, eventRepo, bookingRepo, kafkaProd)
+
+	expirationConsumer := scheduler.NewExpirationConsumer(
+		brokers,
+		topic,
+		"booking-expiration-group",
+		db,
+		eventRepo,
+		bookingRepo)
+	defer expirationConsumer.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	expirationConsumer.Start(ctx)
 
 	eventHandler := handlers.NewEventHandler(bookingService)
 
@@ -46,6 +72,18 @@ func main() {
 	router.POST("/events/:id/book", eventHandler.Book)
 	router.POST("/events/:id/confirm", eventHandler.Confirm)
 	router.GET("/events/:id", eventHandler.GetEventWithDetails)
+
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		zlog.Logger.Info().Msg("Shutting down")
+		cancel()
+
+		time.Sleep(5 * time.Second)
+		os.Exit(0)
+	}()
 
 	if err = router.Run(":8080"); err != nil {
 		zlog.Logger.Fatal().Err(err).Msg("Server failed to start")

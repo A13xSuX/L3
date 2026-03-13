@@ -13,5 +13,8 @@ var (
 	ErrBookingExpired          = errors.New("booking has expired")
 	ErrBookingAlreadyConfirmed = errors.New("booking already confirmed")
 	ErrInvalidPayment          = errors.New("invalid payment amount")
+	//TODO посмотреть может где-то это ошибка будет уместнее
+	ErrEmptyBookingID = errors.New("booking_id is empty")
+	ErrEmptyEventID   = errors.New("event_id is empty")
 	//TODO errNotEnoughPayment
 )
