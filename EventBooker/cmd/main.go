@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"l3/EventBooker/internal/appcfg"
 	"l3/EventBooker/internal/handlers"
-	"l3/EventBooker/internal/producer"
 	"l3/EventBooker/internal/repository"
 	"l3/EventBooker/internal/scheduler"
 	"l3/EventBooker/internal/service"
@@ -42,25 +41,14 @@ func main() {
 	eventRepo := repository.NewEventRepository(db)
 	bookingRepo := repository.NewBookingRepo(db)
 
-	brokers := []string{"localhost:9092"}
-	topic := "booking-expirations"
-	kafkaProd := producer.NewProducer(brokers, topic)
-	defer kafkaProd.Close()
-	bookingService := service.NewBookingService(db, eventRepo, bookingRepo, kafkaProd)
+	bookingService := service.NewBookingService(db, eventRepo, bookingRepo)
 
-	expirationConsumer := scheduler.NewExpirationConsumer(
-		brokers,
-		topic,
-		"booking-expiration-group",
-		db,
-		eventRepo,
-		bookingRepo)
-	defer expirationConsumer.Close()
+	expirationWorker := scheduler.NewExpirationWorker(bookingService, 5*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	expirationConsumer.Start(ctx)
+	go expirationWorker.Start(ctx)
 
 	eventHandler := handlers.NewEventHandler(bookingService)
 

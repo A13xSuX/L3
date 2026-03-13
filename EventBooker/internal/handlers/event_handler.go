@@ -144,7 +144,7 @@ func (h *EventHandler) Confirm(c *ginext.Context) {
 		case errors.Is(err, customErrs.ErrBookingExpired):
 			c.JSON(http.StatusConflict, ginext.H{"error": "Booking has expired"})
 		case errors.Is(err, customErrs.ErrBookingCanceled):
-			c.JSON(http.StatusConflict, ginext.H{"error": "Booking was cancelled"})
+			c.JSON(http.StatusConflict, ginext.H{"error": "Booking was canceled"})
 		default:
 			c.JSON(http.StatusInternalServerError, ginext.H{"error": "Failed to confirm booking"})
 		}

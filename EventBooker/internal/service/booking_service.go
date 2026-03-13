@@ -4,12 +4,10 @@ import (
 	"context"
 	"l3/EventBooker/internal/customErrs"
 	"l3/EventBooker/internal/models"
-	"l3/EventBooker/internal/producer"
 	"l3/EventBooker/internal/repository"
 	"time"
 
 	"github.com/wb-go/wbf/dbpg"
-	"github.com/wb-go/wbf/retry"
 	"github.com/wb-go/wbf/zlog"
 )
 
@@ -17,15 +15,13 @@ type BookingService struct {
 	db          *dbpg.DB
 	eventRepo   *repository.EventRepository
 	bookingRepo *repository.BookingRepository
-	kafkaProd   *producer.Producer
 }
 
-func NewBookingService(db *dbpg.DB, eventRepo *repository.EventRepository, bookingRepo *repository.BookingRepository, kafkaProd *producer.Producer) *BookingService {
+func NewBookingService(db *dbpg.DB, eventRepo *repository.EventRepository, bookingRepo *repository.BookingRepository) *BookingService {
 	return &BookingService{
 		db:          db,
 		eventRepo:   eventRepo,
 		bookingRepo: bookingRepo,
-		kafkaProd:   kafkaProd,
 	}
 }
 
@@ -71,7 +67,7 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 		EventID:   eventID,
 		Username:  username,
 		Status:    "pending",
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 		ExpiredAt: ptrTime(time.Now().Add(1 * time.Minute)),
 	}
 	if !event.PaymentRequired {
@@ -88,26 +84,7 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
-	if event.PaymentRequired {
-		go func() {
-			ctx := context.Background()
-			//todo с конфига
-			strategy := retry.Strategy{
-				Attempts: 3,
-				Delay:    100 * time.Millisecond,
-				Backoff:  2.0,
-			}
 
-			msg := producer.ExpirationMessage{
-				BookingID: booking.ID,
-				EventID:   eventID,
-				ExpiresAt: *booking.ExpiredAt,
-			}
-			if err := s.kafkaProd.SendExpirationMessageWithRetry(ctx, msg, strategy); err != nil {
-				zlog.Logger.Error().Err(err).Msg("Failed to send message in queue")
-			}
-		}()
-	}
 	return booking, nil
 }
 
@@ -136,7 +113,7 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 		return customErrs.ErrBookingCanceled
 	}
 	//TODO is it correct logic?
-	if booking.ExpiredAt != nil && booking.ExpiredAt.Before(time.Now()) {
+	if booking.ExpiredAt != nil && booking.ExpiredAt.Before(time.Now().UTC()) {
 		return customErrs.ErrBookingExpired
 	}
 	//TODO
@@ -148,7 +125,7 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 	//if event == nil {
 	//	return customErrs.ErrEventNotFound
 	//}
-	err = s.bookingRepo.UpdateStatusTx(ctx, tx, bookingID, "confirmed", ptrTime(time.Now()))
+	err = s.bookingRepo.UpdateStatusTx(ctx, tx, bookingID, "confirmed", ptrTime(time.Now().UTC()))
 	booking.ExpiredAt = nil
 	//TODO continue here
 
@@ -188,4 +165,66 @@ func (s *BookingService) GetEventWithDetails(ctx context.Context, eventID string
 		TotalBooked: totalBooked,
 	}
 	return details, nil
+}
+
+func (s *BookingService) CancelExpiredBookings(ctx context.Context) error {
+	expiredBookings, err := s.bookingRepo.GetExpiredBookings(ctx)
+	if err != nil {
+		return err
+	}
+	zlog.Logger.Info().Int("expired_count", len(expiredBookings)).Msg("checked expired bookings")
+	if len(expiredBookings) == 0 {
+		return nil
+	}
+	for _, b := range expiredBookings {
+		zlog.Logger.Info().Str("booking_id", b.ID).Msg("processing expired booking")
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		func() {
+			defer tx.Rollback()
+			booking, err := s.bookingRepo.GetByIDForUpdateTx(ctx, tx, b.ID)
+			if err != nil {
+				zlog.Logger.Error().Err(err).Msg("failed to lock booking")
+				return
+			}
+			if booking == nil {
+				zlog.Logger.Info().Msg("booking not found")
+				return
+			}
+			if booking.Status != "pending" {
+				zlog.Logger.Info().Str("status", booking.Status).Msg("booking is not pending")
+				return
+			}
+			if booking.ExpiredAt == nil || booking.ExpiredAt.After(time.Now().UTC()) {
+				zlog.Logger.Info().Msg("booking is not expired yet")
+				return
+			}
+
+			event, err := s.eventRepo.GetByIDForUpdateTx(ctx, tx, booking.EventID)
+			if err != nil {
+				zlog.Logger.Error().Err(err).Msg("failed to lock event")
+				return
+			}
+			if event == nil {
+				zlog.Logger.Info().Msg("event not found")
+				return
+			}
+			if err = s.eventRepo.UpdateSeatsTx(ctx, tx, booking.EventID, 1); err != nil {
+				zlog.Logger.Error().Err(err).Msg("failed to update seats")
+				return
+			}
+			if err = s.bookingRepo.UpdateStatusTx(ctx, tx, booking.ID, "canceled", nil); err != nil {
+				zlog.Logger.Error().Err(err).Msg("failed to update booking status")
+				return
+			}
+			if err = tx.Commit(); err != nil {
+				zlog.Logger.Error().Err(err).Msg("failed to commit tx")
+				return
+			}
+			zlog.Logger.Info().Str("booking_id", booking.ID).Msg("booking canceled")
+		}()
+	}
+	return nil
 }

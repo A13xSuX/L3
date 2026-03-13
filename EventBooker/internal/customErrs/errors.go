@@ -11,6 +11,7 @@ var (
 	ErrNoAvailableSeats        = errors.New("no available seats")
 	ErrBookingNotFound         = errors.New("booking not found")
 	ErrBookingExpired          = errors.New("booking has expired")
+	ErrBookingsNoExpired       = errors.New("bookings hasn`t expired")
 	ErrBookingAlreadyConfirmed = errors.New("booking already confirmed")
 	ErrInvalidPayment          = errors.New("invalid payment amount")
 	//TODO посмотреть может где-то это ошибка будет уместнее
