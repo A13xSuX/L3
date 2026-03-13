@@ -123,7 +123,9 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 	defer tx.Rollback()
 	//TODO
 	booking, err := s.bookingRepo.GetByIDForUpdateTx(ctx, tx, bookingID)
-
+	if err != nil {
+		return err
+	}
 	if booking == nil {
 		return customErrs.ErrBookingNotFound
 	}
