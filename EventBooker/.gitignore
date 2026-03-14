@@ -1,0 +1,8 @@
+.env
+app-config.yaml
+postgres-config.yaml
+docker-compose.yml
+commentsTree.md
+imageProccessor.md
+config-postgres.yaml
+.idea

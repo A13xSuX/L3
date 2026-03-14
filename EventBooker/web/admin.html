@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EventBooker — Администратор</title>
+    <link rel="stylesheet" href="../web/styles.css" />
+</head>
+<body data-page="admin">
+<div class="container">
+    <h1>Администраторская часть</h1>
+
+    <section class="card">
+        <div class="event-actions">
+            <a class="nav-btn" href="/">На главную</a>
+            <button id="load-events-btn" type="button">Обновить события</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Создать событие</h2>
+        <form id="create-event-form" class="form-grid">
+            <input type="text" id="title" placeholder="Название" required />
+            <input type="text" id="description" placeholder="Описание" required />
+            <input type="datetime-local" id="date" required />
+            <input type="number" id="totalSeats" placeholder="Всего мест" min="1" required />
+            <input type="number" id="price" placeholder="Цена" min="0" required />
+            <label class="checkbox">
+                <input type="checkbox" id="paymentRequired" />
+                Требуется оплата
+            </label>
+            <button type="submit">Создать событие</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Список событий</h2>
+        <div id="events-list" class="events-list"></div>
+    </section>
+
+    <section class="card">
+        <h2>Детали события</h2>
+        <div id="event-details" class="details-empty">Выбери событие</div>
+    </section>
+
+    <div id="message" class="message"></div>
+</div>
+
+<script src="../web/app.js"></script>
+</body>
+</html>
