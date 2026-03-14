@@ -55,6 +55,9 @@ func main() {
 	//replace release
 	router := ginext.New("debug")
 
+	router.Static("/web", "../web")
+	router.StaticFile("/", "../web/index.html")
+
 	router.GET("/events", eventHandler.GetAllEvents)
 	router.POST("/events", eventHandler.CreateEvent)
 	router.POST("/events/:id/book", eventHandler.Book)
