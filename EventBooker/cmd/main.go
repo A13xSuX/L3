@@ -24,9 +24,11 @@ func main() {
 		fmt.Printf("%w", err)
 		return
 	}
+
+	level := parseLogLevel(cfg.LoggerConfig.LogLevel)
+
 	zlog.InitConsole()
-	//TODO уровень надо нормально передавать с конфига
-	zlog.Logger.Level(0)
+	zlog.Logger.Level(level)
 	opts := &dbpg.Options{
 		MaxOpenConns: cfg.PostgresConfig.MaxOpenConns,
 		MaxIdleConns: cfg.PostgresConfig.MaxIdleConns,

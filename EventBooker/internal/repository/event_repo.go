@@ -55,9 +55,8 @@ func (r *EventRepository) GetByID(ctx context.Context, id string) (*models.Event
 		&event.CreatedAt,
 	)
 	if err != nil {
-		//TODO check exactly err
-		if errors.Is(err, errors.New("sql: no rows in result set")) {
-			return nil, nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customErrs.ErrEventNotFound
 		}
 		return nil, err
 	}
@@ -100,13 +99,13 @@ func (r *EventRepository) GetAll(ctx context.Context) ([]models.Event, error) {
 	return events, nil
 }
 
-func (r *EventRepository) UpdateSeats(ctx context.Context, eventID string, newSeats int) error {
+func (r *EventRepository) UpdateSeats(ctx context.Context, eventID string, delta int) error {
 	query := `UPDATE events
 			  SET available_seats = available_seats + $1
 			  WHERE  id = $2
 			  AND available_seats + $1 >= 0
 			  AND available_seats + $1 <= total_seats`
-	result, err := r.db.ExecContext(ctx, query, newSeats, eventID)
+	result, err := r.db.ExecContext(ctx, query, delta, eventID)
 	if err != nil {
 		return err
 	}
@@ -142,7 +141,6 @@ func (r *EventRepository) GetByIDForUpdateTx(ctx context.Context, tx *sql.Tx, id
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			//TODO в остальных поменять
 			return nil, customErrs.ErrEventNotFound
 		}
 		return nil, err
@@ -150,14 +148,13 @@ func (r *EventRepository) GetByIDForUpdateTx(ctx context.Context, tx *sql.Tx, id
 	return &event, nil
 }
 
-// TODO rename newSeats to delta
-func (r *EventRepository) UpdateSeatsTx(ctx context.Context, tx *sql.Tx, eventID string, newSeats int) error {
+func (r *EventRepository) UpdateSeatsTx(ctx context.Context, tx *sql.Tx, eventID string, delta int) error {
 	query := `UPDATE events
 			  SET available_seats = available_seats + $1
 			  WHERE  id = $2
 			  AND available_seats + $1 >= 0
 			  AND available_seats + $1 <= total_seats`
-	result, err := tx.ExecContext(ctx, query, newSeats, eventID)
+	result, err := tx.ExecContext(ctx, query, delta, eventID)
 	if err != nil {
 		return err
 	}

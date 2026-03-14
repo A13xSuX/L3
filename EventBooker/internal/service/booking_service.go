@@ -40,7 +40,6 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 	if len(username) == 0 {
 		return nil, customErrs.ErrInvalidUsername
 	}
-	//TODO я же не просто так перекидывал opts в main
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -58,7 +57,6 @@ func (s *BookingService) Book(ctx context.Context, eventID, username string) (*m
 		return nil, customErrs.ErrNoAvailableSeats
 	}
 	//уменьшаем
-	//TODO newSeats will do rename
 	err = s.eventRepo.UpdateSeatsTx(ctx, tx, eventID, -1)
 	if err != nil {
 		return nil, err
@@ -92,13 +90,13 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 	if len(bookingID) == 0 {
 		return customErrs.ErrInvalidBookingID
 	}
-	//TODO options
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	//TODO
+
 	booking, err := s.bookingRepo.GetByIDForUpdateTx(ctx, tx, bookingID)
 	if err != nil {
 		return err
@@ -112,22 +110,13 @@ func (s *BookingService) Confirm(ctx context.Context, bookingID string) error {
 	if booking.Status == "canceled" {
 		return customErrs.ErrBookingCanceled
 	}
-	//TODO is it correct logic?
+
 	if booking.ExpiredAt != nil && booking.ExpiredAt.Before(time.Now().UTC()) {
 		return customErrs.ErrBookingExpired
 	}
-	//TODO
-	//event, err := s.eventRepo.GetByID(ctx, booking.EventID)
-	//if err != nil {
-	//	return err
-	//}
-	////check on amount of cost(mb)
-	//if event == nil {
-	//	return customErrs.ErrEventNotFound
-	//}
+
 	err = s.bookingRepo.UpdateStatusTx(ctx, tx, bookingID, "confirmed", ptrTime(time.Now().UTC()))
 	booking.ExpiredAt = nil
-	//TODO continue here
 
 	if err = tx.Commit(); err != nil {
 		return err
@@ -142,7 +131,6 @@ func (s *BookingService) GetEventWithDetails(ctx context.Context, eventID string
 
 	event, err := s.eventRepo.GetByID(ctx, eventID)
 	if err != nil {
-		//TODO прочекать та ли ошибка
 		return nil, err
 	}
 	if event == nil {

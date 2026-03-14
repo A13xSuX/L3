@@ -51,9 +51,8 @@ func (r *BookingRepository) GetByID(ctx context.Context, id string) (*models.Boo
 		&booking.ConfirmedAt,
 	)
 	if err != nil {
-		//TODO err?
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, customErrs.ErrBookingNotFound
 		}
 		return nil, err
 	}
@@ -76,7 +75,6 @@ func (r *BookingRepository) UpdateStatus(ctx context.Context, id string, status 
 	}
 
 	if rowsAffected == 0 {
-		//TODO может кастомную реализовать
 		return sql.ErrNoRows
 	}
 
@@ -149,7 +147,7 @@ func (r *BookingRepository) GetByIDForUpdateTx(ctx context.Context, tx *sql.Tx, 
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+			return nil, customErrs.ErrBookingNotFound
 		}
 		return nil, err
 	}
@@ -172,7 +170,6 @@ func (r *BookingRepository) UpdateStatusTx(ctx context.Context, tx *sql.Tx, id s
 	}
 
 	if rowsAffected == 0 {
-		//TODO может кастомную реализовать
 		return customErrs.ErrBookingNotFound
 	}
 
