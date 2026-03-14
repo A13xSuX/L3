@@ -1,9 +1,10 @@
 const API_BASE = "";
 
+const pageType = document.body.dataset.page;
+
 const eventsList = document.getElementById("events-list");
 const eventDetails = document.getElementById("event-details");
 const messageBox = document.getElementById("message");
-
 const createEventForm = document.getElementById("create-event-form");
 const loadEventsBtn = document.getElementById("load-events-btn");
 const confirmBookingForm = document.getElementById("confirm-booking-form");
@@ -11,6 +12,7 @@ const confirmBookingForm = document.getElementById("confirm-booking-form");
 let selectedEventId = null;
 
 function showMessage(text, type = "success") {
+    if (!messageBox) return;
     messageBox.textContent = text;
     messageBox.className = `message show ${type}`;
     setTimeout(() => {
@@ -42,23 +44,29 @@ async function request(url, options = {}) {
 }
 
 async function loadEvents() {
+    if (!eventsList) return;
+
     try {
         const events = await request(`${API_BASE}/events`);
-        renderEvents(events);
+        renderEvents(events || []);
     } catch (err) {
         showMessage(`Ошибка загрузки событий: ${err.message}`, "error");
     }
 }
 
 function renderEvents(events) {
+    if (!eventsList) return;
+
     if (!events || events.length === 0) {
         eventsList.innerHTML = "<div>Событий пока нет</div>";
         return;
     }
 
     eventsList.innerHTML = events
-        .map(
-            (event) => `
+        .map((event) => {
+            const isAdmin = pageType === "admin";
+
+            return `
         <div class="event-item">
           <h3>${event.title}</h3>
           <div class="event-meta">ID: ${event.id}</div>
@@ -70,16 +78,21 @@ function renderEvents(events) {
 
           <div class="event-actions">
             <button onclick="loadEventDetails('${event.id}')">Открыть детали</button>
-            <button onclick="bookEvent('${event.id}')">Забронировать</button>
+            ${
+                isAdmin
+                    ? ""
+                    : `<button onclick="bookEvent('${event.id}')">Забронировать</button>`
+            }
           </div>
         </div>
-      `
-        )
+      `;
+        })
         .join("");
 }
 
 async function loadEventDetails(eventId) {
     selectedEventId = eventId;
+
     try {
         const data = await request(`${API_BASE}/events/${eventId}`);
         renderEventDetails(data);
@@ -89,6 +102,8 @@ async function loadEventDetails(eventId) {
 }
 
 function renderEventDetails(data) {
+    if (!eventDetails) return;
+
     const event = data.event || data.Event;
     const bookings = data.bookings || data.Bookings || [];
     const freeSeats = data.freeSeats ?? data.FreeSeats;
@@ -150,55 +165,61 @@ async function bookEvent(eventId) {
     }
 }
 
-createEventForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+if (createEventForm) {
+    createEventForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-    const payload = {
-        title: document.getElementById("title").value,
-        description: document.getElementById("description").value,
-        date: new Date(document.getElementById("date").value).toISOString(),
-        totalSeats: Number(document.getElementById("totalSeats").value),
-        availableSeats: Number(document.getElementById("totalSeats").value),
-        price: Number(document.getElementById("price").value),
-        paymentRequired: document.getElementById("paymentRequired").checked,
-    };
+        const payload = {
+            title: document.getElementById("title").value,
+            description: document.getElementById("description").value,
+            date: new Date(document.getElementById("date").value).toISOString(),
+            totalSeats: Number(document.getElementById("totalSeats").value),
+            availableSeats: Number(document.getElementById("totalSeats").value),
+            price: Number(document.getElementById("price").value),
+            paymentRequired: document.getElementById("paymentRequired").checked,
+        };
 
-    try {
-        await request(`${API_BASE}/events`, {
-            method: "POST",
-            body: JSON.stringify(payload),
-        });
+        try {
+            await request(`${API_BASE}/events`, {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
 
-        createEventForm.reset();
-        showMessage("Событие создано");
-        await loadEvents();
-    } catch (err) {
-        showMessage(`Ошибка создания события: ${err.message}`, "error");
-    }
-});
-
-confirmBookingForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const bookingId = document.getElementById("confirmBookingId").value.trim();
-    if (!bookingId) return;
-
-    try {
-        await request(`${API_BASE}/events/${bookingId}/confirm`, {
-            method: "POST",
-        });
-
-        showMessage("Бронь подтверждена");
-
-        if (selectedEventId) {
-            await loadEventDetails(selectedEventId);
+            createEventForm.reset();
+            showMessage("Событие создано");
             await loadEvents();
+        } catch (err) {
+            showMessage(`Ошибка создания события: ${err.message}`, "error");
         }
-    } catch (err) {
-        showMessage(`Ошибка подтверждения: ${err.message}`, "error");
-    }
-});
+    });
+}
 
-loadEventsBtn.addEventListener("click", loadEvents);
+if (confirmBookingForm) {
+    confirmBookingForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const bookingId = document.getElementById("confirmBookingId").value.trim();
+        if (!bookingId) return;
+
+        try {
+            await request(`${API_BASE}/events/${bookingId}/confirm`, {
+                method: "POST",
+            });
+
+            showMessage("Бронь подтверждена");
+
+            if (selectedEventId) {
+                await loadEventDetails(selectedEventId);
+                await loadEvents();
+            }
+        } catch (err) {
+            showMessage(`Ошибка подтверждения: ${err.message}`, "error");
+        }
+    });
+}
+
+if (loadEventsBtn) {
+    loadEventsBtn.addEventListener("click", loadEvents);
+}
 
 loadEvents();

@@ -48,15 +48,21 @@ textarea {
     font-size: 14px;
 }
 
-button {
+button,
+.nav-btn {
     cursor: pointer;
     border: none;
     background: #2563eb;
     color: white;
     font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    padding: 10px 12px;
+    border-radius: 8px;
 }
 
-button:hover {
+button:hover,
+.nav-btn:hover {
     background: #1d4ed8;
 }
 
@@ -64,12 +70,6 @@ button:hover {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-.section-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
 }
 
 .events-list {

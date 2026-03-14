@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EventBooker — Пользователь</title>
+    <link rel="stylesheet" href="../web/styles.css" />
+</head>
+<body data-page="user">
+<div class="container">
+    <h1>Пользовательская часть</h1>
+
+    <section class="card">
+        <div class="event-actions">
+            <a class="nav-btn" href="/">На главную</a>
+            <button id="load-events-btn" type="button">Обновить события</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>Список событий</h2>
+        <div id="events-list" class="events-list"></div>
+    </section>
+
+    <section class="card">
+        <h2>Детали события</h2>
+        <div id="event-details" class="details-empty">Выбери событие</div>
+    </section>
+
+    <section class="card">
+        <h2>Подтвердить бронь</h2>
+        <form id="confirm-booking-form" class="inline-form">
+            <input type="text" id="confirmBookingId" placeholder="Booking ID" required />
+            <button type="submit">Подтвердить</button>
+        </form>
+    </section>
+
+    <div id="message" class="message"></div>
+</div>
+
+<script src="../web/app.js"></script>
+</body>
+</html>

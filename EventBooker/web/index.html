@@ -11,45 +11,12 @@
     <h1>EventBooker</h1>
 
     <section class="card">
-        <h2>Создать событие</h2>
-        <form id="create-event-form" class="form-grid">
-            <input type="text" id="title" placeholder="Название" required />
-            <input type="text" id="description" placeholder="Описание" required />
-            <input type="datetime-local" id="date" required />
-            <input type="number" id="totalSeats" placeholder="Всего мест" min="1" required />
-            <input type="number" id="price" placeholder="Цена" min="0" required />
-            <label class="checkbox">
-                <input type="checkbox" id="paymentRequired" />
-                Требуется оплата
-            </label>
-            <button type="submit">Создать событие</button>
-        </form>
-    </section>
-
-    <section class="card">
-        <div class="section-head">
-            <h2>События</h2>
-            <button id="load-events-btn">Обновить</button>
+        <h2>Выбор роли</h2>
+        <div class="event-actions">
+            <a class="nav-btn" href="../web/user.html">Пользовательская часть</a>
+            <a class="nav-btn" href="../web/admin.html">Администраторская часть</a>
         </div>
-        <div id="events-list" class="events-list"></div>
     </section>
-
-    <section class="card">
-        <h2>Детали события</h2>
-        <div id="event-details" class="details-empty">Выбери событие</div>
-    </section>
-
-    <section class="card">
-        <h2>Подтвердить бронь</h2>
-        <form id="confirm-booking-form" class="inline-form">
-            <input type="text" id="confirmBookingId" placeholder="Booking ID" required />
-            <button type="submit">Подтвердить</button>
-        </form>
-    </section>
-
-    <div id="message" class="message"></div>
 </div>
-
-<script src="../web/app.js"></script>
 </body>
 </html>
