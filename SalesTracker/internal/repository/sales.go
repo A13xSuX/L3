@@ -20,8 +20,20 @@ func NewSalesRepo(db *dbpg.DB) *SalesRepo {
 }
 
 func (r *SalesRepo) Create(ctx context.Context, sale *models.Sale) error {
+	if sale.SaleDate.IsZero() {
+		query := `INSERT INTO sales (title, category, price, quantity)
+			  VALUES ($1,$2,$3,$4)
+			  RETURNING id, sale_date`
+		row := r.db.QueryRowContext(ctx, query,
+			sale.Title,
+			sale.Category,
+			sale.Price,
+			sale.Quantity,
+		)
+		return row.Scan(&sale.ID, &sale.SaleDate)
+	}
 	query := `INSERT INTO sales (title, category, price, quantity, sale_date)
-			  VALUES ($1,$2,$3,$4,$5)
+			  VALUES ($1,$2,$3,$4, $5)
 			  RETURNING id`
 	row := r.db.QueryRowContext(ctx, query,
 		sale.Title,
