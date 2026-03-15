@@ -14,6 +14,21 @@ type Sale struct {
 	SaleDate time.Time
 }
 
+type AnalyticsResponse struct {
+	Sum    float64
+	Avg    float64
+	Count  int
+	Median float64
+	P90    float64
+}
+
+type AnalyticsFilter struct {
+	From     time.Time
+	To       time.Time
+	Category string
+	Title    string
+}
+
 func (s *Sale) Validation() error {
 	if s.Price <= 0 {
 		return errors.New("price must be positive")

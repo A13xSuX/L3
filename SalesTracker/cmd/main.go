@@ -43,6 +43,7 @@ func main() {
 	router.DELETE("/items/:id", handler.Delete)
 	router.GET("/items", handler.GetAll)
 	router.GET("/items/:id", handler.GetByID)
+	router.GET("/analytics", handler.Analytics)
 
 	if err := router.Run(cfg.ServerConfig.Addr); err != nil {
 		zlog.Logger.Error().Err(err).Msg("server failed")

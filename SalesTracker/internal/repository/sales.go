@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"l3/SalesTracker/internal/models"
 
 	"github.com/wb-go/wbf/dbpg"
@@ -143,4 +144,42 @@ func (r *SalesRepo) Delete(ctx context.Context, id string) error {
 		return errors.New("sales id  not found")
 	}
 	return nil
+}
+
+func (r *SalesRepo) Analytics(ctx context.Context, filters *models.AnalyticsFilter) (*models.AnalyticsResponse, error) {
+	var analyticsResponse models.AnalyticsResponse
+
+	query := `SELECT COALESCE(SUM(price*quantity),0),
+       COALESCE(AVG(price*quantity),0),
+       COUNT(*),
+       COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP ( ORDER BY price*quantity ), 0),
+       COALESCE(PERCENTILE_CONT(0.9) WITHIN GROUP ( ORDER BY price*quantity ), 0)   FROM sales
+	   WHERE sale_date BETWEEN $1 AND $2`
+
+	args := []any{filters.From, filters.To}
+	argsPos := 3
+
+	if filters.Title != "" {
+		query += fmt.Sprintf(` AND title = $%d`, argsPos)
+		args = append(args, filters.Title)
+		argsPos++
+	}
+	if filters.Category != "" {
+		query += fmt.Sprintf(` AND category = $%d`, argsPos)
+		args = append(args, filters.Category)
+		argsPos++
+	}
+
+	row := r.db.QueryRowContext(ctx, query, args...)
+	err := row.Scan(
+		&analyticsResponse.Sum,
+		&analyticsResponse.Avg,
+		&analyticsResponse.Count,
+		&analyticsResponse.Median,
+		&analyticsResponse.P90,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &analyticsResponse, nil
 }

@@ -4,6 +4,7 @@ import (
 	"l3/SalesTracker/internal/models"
 	"l3/SalesTracker/internal/repository"
 	"net/http"
+	"time"
 
 	"github.com/wb-go/wbf/ginext"
 )
@@ -132,4 +133,52 @@ func (h *SaleHandler) GetAll(c *ginext.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, sales)
+}
+
+func (h *SaleHandler) Analytics(c *ginext.Context) {
+	from := c.Query("from")
+	to := c.Query("to")
+	if from == "" || to == "" {
+		c.JSON(http.StatusBadRequest, ginext.H{
+			"error": "from or to is empty",
+		})
+		return
+	}
+	category := c.Query("category")
+	title := c.Query("title")
+	fromTime, err := time.Parse("2006-01-02", from)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ginext.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	toTime, err := time.Parse("2006-01-02", to) //2006-01-02T15:04:05Z07:00
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ginext.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if fromTime.After(toTime) {
+		c.JSON(http.StatusBadRequest, ginext.H{
+			"error": "from must be before to",
+		})
+		return
+	}
+	analyticsFilters := &models.AnalyticsFilter{
+		From:     fromTime,
+		To:       toTime,
+		Category: category,
+		Title:    title,
+	}
+	resp, err := h.salesRepo.Analytics(c.Request.Context(), analyticsFilters)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ginext.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
