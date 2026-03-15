@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"l3/SalesTracker/internal/customErrs"
 	"l3/SalesTracker/internal/models"
 
 	"github.com/wb-go/wbf/dbpg"
@@ -61,7 +62,6 @@ func (r *SalesRepo) GetByID(ctx context.Context, id string) (*models.Sale, error
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			//TODO может сделать ошибку на отсутствие чтобы передавать nil, newerr
 			return nil, nil
 		}
 		return nil, err
@@ -123,8 +123,7 @@ func (r *SalesRepo) Update(ctx context.Context, newSale *models.Sale) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		//TODO customErrs
-		return errors.New("sales id  not found")
+		return customErrs.ErrIDNotFound
 	}
 	return nil
 }
@@ -141,7 +140,7 @@ func (r *SalesRepo) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("sales id  not found")
+		return customErrs.ErrIDNotFound
 	}
 	return nil
 }

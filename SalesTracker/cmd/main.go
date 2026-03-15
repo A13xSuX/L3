@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"l3/SalesTracker/internal/appCfg"
 	"l3/SalesTracker/internal/handlers"
 	"l3/SalesTracker/internal/repository"
+	"time"
 
 	"github.com/wb-go/wbf/dbpg"
 	"github.com/wb-go/wbf/ginext"
@@ -27,17 +29,31 @@ func main() {
 		MaxIdleConns:    cfg.PostgresConfig.MaxIdleConns,
 		ConnMaxLifetime: cfg.PostgresConfig.ConnMaxLifetime,
 	}
-	//TODO healthcheck
+
 	db, err := dbpg.New(cfg.PostgresConfig.MasterDSN, cfg.PostgresConfig.SlaveDSN, &options)
 	if err != nil {
 		zlog.Logger.Error().Err(err).Msg("Failed connect to db")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	row := db.QueryRowContext(ctx, "SELECT 1")
+
+	var one int
+	if err := row.Scan(&one); err != nil {
+		zlog.Logger.Error().Err(err).Msg("Database healthcheck failed")
 		return
 	}
 	zlog.Logger.Info().Msg("Success connect to db")
 
 	salesRepo := repository.NewSalesRepo(db)
 	handler := handlers.NewSaleHandler(salesRepo)
+	//change to release
 	router := ginext.New("debug")
+
+	router.StaticFile("/", "../web/index.html")
+
 	router.POST("/items", handler.Create)
 	router.PUT("/items/:id", handler.Update)
 	router.DELETE("/items/:id", handler.Delete)

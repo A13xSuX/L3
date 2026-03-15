@@ -1,7 +1,7 @@
 package models
 
 import (
-	"errors"
+	"l3/SalesTracker/internal/customErrs"
 	"time"
 )
 
@@ -31,16 +31,16 @@ type AnalyticsFilter struct {
 
 func (s *Sale) Validation() error {
 	if s.Price <= 0 {
-		return errors.New("price must be positive")
+		return customErrs.ErrPriceNotPositive
 	}
 	if s.Quantity <= 0 {
-		return errors.New("quantity must be positive")
+		return customErrs.ErrQuantityNotPositive
 	}
 	if s.Title == "" {
-		return errors.New("title is empty")
+		return customErrs.ErrTitleEmpty
 	}
 	if s.Category == "" {
-		return errors.New("category is empty")
+		return customErrs.ErrCategoryEmpty
 	}
 	return nil
 }

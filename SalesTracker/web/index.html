@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SalesTracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            background: #f6f7fb;
+            color: #222;
+        }
+
+        h1, h2 {
+            margin-bottom: 12px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
+            gap: 6px;
+        }
+
+        input, button {
+            padding: 10px 12px;
+            border: 1px solid #d7dbe7;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button {
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+            border: none;
+        }
+
+        button.secondary {
+            background: #64748b;
+        }
+
+        button.danger {
+            background: #dc2626;
+        }
+
+        button.warning {
+            background: #d97706;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .message {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .message.success {
+            background: #dcfce7;
+            color: #166534;
+            display: block;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            background: white;
+        }
+
+        th, td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f8fafc;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .card {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 14px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .card-title {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .small {
+            color: #64748b;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+<h1>SalesTracker</h1>
+
+<div class="section">
+    <h2>Добавить запись</h2>
+    <form id="createForm">
+        <label>
+            Название
+            <input type="text" id="createTitle" required />
+        </label>
+
+        <label>
+            Категория
+            <input type="text" id="createCategory" required />
+        </label>
+
+        <label>
+            Цена за единицу
+            <input type="number" id="createPrice" min="0.01" step="0.01" required />
+        </label>
+
+        <label>
+            Количество
+            <input type="number" id="createQuantity" min="1" step="1" required />
+        </label>
+
+        <label>
+            Дата продажи (необязательно)
+            <input type="datetime-local" id="createSaleDate" />
+        </label>
+
+        <button type="submit">Создать</button>
+    </form>
+    <div id="createMessage" class="message"></div>
+</div>
+
+<div class="section">
+    <h2>Фильтры таблицы</h2>
+    <form id="tableFiltersForm">
+        <label>
+            По названию
+            <input type="text" id="filterTitle" />
+        </label>
+
+        <label>
+            По категории
+            <input type="text" id="filterCategory" />
+        </label>
+
+        <label>
+            С даты
+            <input type="date" id="filterFrom" />
+        </label>
+
+        <label>
+            По дату
+            <input type="date" id="filterTo" />
+        </label>
+
+        <div class="actions">
+            <button type="button" id="applyFiltersBtn">Применить фильтры</button>
+            <button type="button" class="secondary" id="resetFiltersBtn">Сбросить</button>
+            <button type="button" class="secondary" id="reloadBtn">Обновить таблицу</button>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Все записи</h2>
+    <div class="small">Фильтрация таблицы сейчас делается на фронте после GET /items.</div>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Категория</th>
+            <th>Цена</th>
+            <th>Количество</th>
+            <th>Сумма</th>
+            <th>Дата продажи</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody id="salesTableBody"></tbody>
+    </table>
+</div>
+
+<div class="section">
+    <h2>Аналитика</h2>
+    <form id="analyticsForm">
+        <label>
+            С даты
+            <input type="date" id="analyticsFrom" required />
+        </label>
+
+        <label>
+            По дату
+            <input type="date" id="analyticsTo" required />
+        </label>
+
+        <label>
+            Категория
+            <input type="text" id="analyticsCategory" />
+        </label>
+
+        <label>
+            Название
+            <input type="text" id="analyticsTitle" />
+        </label>
+
+        <button type="submit">Получить аналитику</button>
+    </form>
+
+    <div id="analyticsMessage" class="message"></div>
+
+    <div class="analytics-grid">
+        <div class="card">
+            <div class="card-title">Сумма</div>
+            <div class="card-value" id="sumValue">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Среднее</div>
+            <div class="card-value" id="avgValue">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Количество</div>
+            <div class="card-value" id="countValue">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Медиана</div>
+            <div class="card-value" id="medianValue">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">90-й перцентиль</div>
+            <div class="card-value" id="p90Value">0</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = "";
+
+    let allSales = [];
+
+    function showMessage(el, text, type) {
+        el.textContent = text;
+        el.className = `message ${type}`;
+    }
+
+    function clearMessage(el) {
+        el.textContent = "";
+        el.className = "message";
+    }
+
+    function normalizeSale(raw) {
+        return {
+            id: raw.id ?? raw.ID ?? "",
+            title: raw.title ?? raw.Title ?? "",
+            category: raw.category ?? raw.Category ?? "",
+            price: Number(raw.price ?? raw.Price ?? 0),
+            quantity: Number(raw.quantity ?? raw.Quantity ?? 0),
+            saleDate: raw.sale_date ?? raw.SaleDate ?? "",
+        };
+    }
+
+    function formatDate(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString("ru-RU");
+    }
+
+    function formatNumber(value) {
+        return Number(value || 0).toLocaleString("ru-RU", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        });
+    }
+
+    function toApiDateTime(localDateTime) {
+        if (!localDateTime) return undefined;
+        const date = new Date(localDateTime);
+        return date.toISOString();
+    }
+
+    function renderTable(items) {
+        const tbody = document.getElementById("salesTableBody");
+        tbody.innerHTML = "";
+
+        if (!items.length) {
+            tbody.innerHTML = `
+          <tr>
+            <td colspan="8">Нет записей</td>
+          </tr>
+        `;
+            return;
+        }
+
+        items.forEach((sale) => {
+            const sum = sale.price * sale.quantity;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+          <td>${sale.id}</td>
+          <td>${sale.title}</td>
+          <td>${sale.category}</td>
+          <td>${formatNumber(sale.price)}</td>
+          <td>${formatNumber(sale.quantity)}</td>
+          <td>${formatNumber(sum)}</td>
+          <td>${formatDate(sale.saleDate)}</td>
+          <td>
+            <div class="actions">
+              <button class="warning" data-action="edit" data-id="${sale.id}">Редактировать</button>
+              <button class="danger" data-action="delete" data-id="${sale.id}">Удалить</button>
+            </div>
+          </td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function applyTableFilters() {
+        const title = document.getElementById("filterTitle").value.trim().toLowerCase();
+        const category = document.getElementById("filterCategory").value.trim().toLowerCase();
+        const from = document.getElementById("filterFrom").value;
+        const to = document.getElementById("filterTo").value;
+
+        const filtered = allSales.filter((sale) => {
+            const saleDate = sale.saleDate ? new Date(sale.saleDate) : null;
+
+            const matchesTitle = !title || sale.title.toLowerCase().includes(title);
+            const matchesCategory = !category || sale.category.toLowerCase().includes(category);
+
+            let matchesFrom = true;
+            let matchesTo = true;
+
+            if (from && saleDate) {
+                const fromDate = new Date(from);
+                matchesFrom = saleDate >= fromDate;
+            }
+
+            if (to && saleDate) {
+                const toDate = new Date(to);
+                toDate.setHours(23, 59, 59, 999);
+                matchesTo = saleDate <= toDate;
+            }
+
+            return matchesTitle && matchesCategory && matchesFrom && matchesTo;
+        });
+
+        renderTable(filtered);
+    }
+
+    async function loadSales() {
+        const response = await fetch(`${API_BASE}/items`);
+        if (!response.ok) {
+            throw new Error("Не удалось загрузить записи");
+        }
+
+        const data = await response.json();
+        allSales = Array.isArray(data) ? data.map(normalizeSale) : [];
+        renderTable(allSales);
+    }
+
+    async function createSale(event) {
+        event.preventDefault();
+        const msg = document.getElementById("createMessage");
+        clearMessage(msg);
+
+        const payload = {
+            title: document.getElementById("createTitle").value.trim(),
+            category: document.getElementById("createCategory").value.trim(),
+            price: Number(document.getElementById("createPrice").value),
+            quantity: Number(document.getElementById("createQuantity").value),
+        };
+
+        const saleDateInput = document.getElementById("createSaleDate").value;
+        if (saleDateInput) {
+            payload.sale_date = toApiDateTime(saleDateInput);
+            payload.SaleDate = toApiDateTime(saleDateInput);
+        }
+
+        const response = await fetch(`${API_BASE}/items`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            showMessage(msg, result.error || "Ошибка создания записи", "error");
+            return;
+        }
+
+        showMessage(msg, "Запись успешно создана", "success");
+        document.getElementById("createForm").reset();
+        await loadSales();
+    }
+
+    async function deleteSale(id) {
+        const ok = confirm("Удалить запись?");
+        if (!ok) return;
+
+        const response = await fetch(`${API_BASE}/items/${id}`, {
+            method: "DELETE",
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            alert(result.error || "Не удалось удалить запись");
+            return;
+        }
+
+        await loadSales();
+    }
+
+    async function editSale(id) {
+        const sale = allSales.find((x) => x.id === id);
+        if (!sale) return;
+
+        const title = prompt("Новое название:", sale.title);
+        if (title === null) return;
+
+        const category = prompt("Новая категория:", sale.category);
+        if (category === null) return;
+
+        const price = prompt("Новая цена:", sale.price);
+        if (price === null) return;
+
+        const quantity = prompt("Новое количество:", sale.quantity);
+        if (quantity === null) return;
+
+        const payload = {
+            title: title.trim(),
+            category: category.trim(),
+            price: Number(price),
+            quantity: Number(quantity),
+        };
+
+        const response = await fetch(`${API_BASE}/items/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            alert(result.error || "Не удалось обновить запись");
+            return;
+        }
+
+        await loadSales();
+    }
+
+    async function loadAnalytics(event) {
+        event.preventDefault();
+
+        const msg = document.getElementById("analyticsMessage");
+        clearMessage(msg);
+
+        const from = document.getElementById("analyticsFrom").value;
+        const to = document.getElementById("analyticsTo").value;
+        const category = document.getElementById("analyticsCategory").value.trim();
+        const title = document.getElementById("analyticsTitle").value.trim();
+
+        const params = new URLSearchParams();
+        params.set("from", from);
+        params.set("to", to);
+        if (category) params.set("category", category);
+        if (title) params.set("title", title);
+
+        const response = await fetch(`${API_BASE}/analytics?${params.toString()}`);
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            showMessage(msg, result.error || "Не удалось получить аналитику", "error");
+            return;
+        }
+
+        const sum = result.sum ?? result.Sum ?? 0;
+        const avg = result.avg ?? result.Avg ?? 0;
+        const count = result.count ?? result.Count ?? 0;
+        const median = result.median ?? result.Median ?? 0;
+        const p90 = result.p90 ?? result.P90 ?? 0;
+
+        document.getElementById("sumValue").textContent = formatNumber(sum);
+        document.getElementById("avgValue").textContent = formatNumber(avg);
+        document.getElementById("countValue").textContent = formatNumber(count);
+        document.getElementById("medianValue").textContent = formatNumber(median);
+        document.getElementById("p90Value").textContent = formatNumber(p90);
+    }
+
+    document.getElementById("createForm").addEventListener("submit", createSale);
+    document.getElementById("analyticsForm").addEventListener("submit", loadAnalytics);
+    document.getElementById("applyFiltersBtn").addEventListener("click", applyTableFilters);
+    document.getElementById("resetFiltersBtn").addEventListener("click", () => {
+        document.getElementById("tableFiltersForm").reset();
+        renderTable(allSales);
+    });
+    document.getElementById("reloadBtn").addEventListener("click", loadSales);
+
+    document.getElementById("salesTableBody").addEventListener("click", async (event) => {
+        const btn = event.target.closest("button");
+        if (!btn) return;
+
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+
+        if (action === "delete") {
+            await deleteSale(id);
+        }
+
+        if (action === "edit") {
+            await editSale(id);
+        }
+    });
+
+    loadSales().catch((err) => {
+        console.error(err);
+        renderTable([]);
+    });
+</script>
+</body>
+</html>
