@@ -9,3 +9,6 @@ postgres:
   port: 5433
   master_dsn: "postgres://user:password@host/dbname?sslmode=disable"
   slave_dsn: []
+jwt:
+  secret_key: "secret_key"
+  ttl: 24h
