@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WarehouseControl UI</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --panel-2: #1f2937;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #d97706;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Inter, Arial, sans-serif;
+            background: linear-gradient(180deg, #0b1120, #0f172a);
+            color: var(--text);
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        .title h1 {
+            margin: 0;
+            font-size: 30px;
+            font-weight: 800;
+        }
+        .title p {
+            margin: 8px 0 0;
+            color: var(--muted);
+        }
+        .badge {
+            display: none;
+            background: rgba(31, 41, 55, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px 16px;
+            align-items: center;
+            gap: 12px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 20px;
+        }
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+        }
+        .card h2 {
+            margin: 0 0 14px;
+            font-size: 20px;
+        }
+        .muted {
+            color: var(--muted);
+            font-size: 14px;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        input, select {
+            width: 100%;
+            padding: 11px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #0b1220;
+            color: var(--text);
+            outline: none;
+        }
+        input:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+        button:hover { opacity: 0.95; }
+        .btn-primary { background: var(--primary); }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); }
+        .btn-secondary { background: #475569; }
+        .notice {
+            display: none;
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        .notice.ok {
+            display: block;
+            background: rgba(22, 163, 74, 0.15);
+            border: 1px solid rgba(22, 163, 74, 0.4);
+            color: #bbf7d0;
+        }
+        .notice.err {
+            display: block;
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(220, 38, 38, 0.4);
+            color: #fecaca;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        th, td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            vertical-align: top;
+        }
+        th {
+            background: rgba(30, 41, 59, 0.65);
+            color: #cbd5e1;
+        }
+        tr:hover td {
+            background: rgba(30, 41, 59, 0.22);
+        }
+        .mini-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .mini-actions button {
+            font-size: 12px;
+            padding: 8px 10px;
+            border-radius: 10px;
+        }
+        .json-box {
+            max-width: 280px;
+            max-height: 160px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1220;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            color: #dbeafe;
+        }
+        .empty {
+            text-align: center;
+            color: var(--muted);
+            padding: 22px;
+        }
+        @media (max-width: 1024px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="title">
+            <h1>WarehouseControl</h1>
+            <p>Простой интерфейс для входа, CRUD товаров и просмотра истории изменений.</p>
+        </div>
+        <div id="sessionBadge" class="badge">
+            <div>
+                <div id="sessionUser" style="font-weight: 800;"></div>
+                <div id="sessionRole" class="muted"></div>
+            </div>
+            <button id="logoutBtn" class="btn-secondary">Выйти</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="stack">
+            <section class="card">
+                <h2>Вход</h2>
+                <label>
+                    Пользователь
+                    <select id="loginUsername">
+                        <option value="admin">admin</option>
+                        <option value="manager">manager</option>
+                        <option value="viewer">viewer</option>
+                    </select>
+                </label>
+                <label>
+                    Пароль
+                    <input id="loginPassword" type="password" placeholder="Например, admin123" />
+                </label>
+                <div class="actions">
+                    <button id="loginBtn" class="btn-primary">Войти</button>
+                </div>
+                <div id="loginNotice" class="notice"></div>
+            </section>
+
+            <section class="card" id="itemFormCard">
+                <h2 id="formTitle">Создать товар</h2>
+                <input id="itemId" type="hidden" />
+                <label>
+                    Название
+                    <input id="itemTitle" type="text" placeholder="Например, Кабель HDMI" />
+                </label>
+                <label>
+                    SKU
+                    <input id="itemSku" type="text" placeholder="Например, HDMI-001" />
+                </label>
+                <label>
+                    Количество
+                    <input id="itemQuantity" type="number" min="0" placeholder="0" />
+                </label>
+                <div class="actions">
+                    <button id="saveItemBtn" class="btn-success">Сохранить</button>
+                    <button id="resetItemBtn" class="btn-secondary">Сбросить</button>
+                </div>
+                <p id="formHint" class="muted">Создание и редактирование доступны только для admin и manager.</p>
+                <div id="itemNotice" class="notice"></div>
+            </section>
+        </div>
+
+        <div class="stack">
+            <section class="card">
+                <div class="toolbar">
+                    <div>
+                        <h2 style="margin-bottom: 4px;">Товары</h2>
+                        <div class="muted">Ручка: <code>GET /items</code></div>
+                    </div>
+                    <button id="refreshItemsBtn" class="btn-primary">Обновить</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>SKU</th>
+                            <th>Quantity</th>
+                            <th>Created At</th>
+                            <th>Updated At</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="itemsTableBody">
+                        <tr><td colspan="7" class="empty">Сначала выполните вход.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="itemsNotice" class="notice"></div>
+            </section>
+
+            <section class="card" id="auditCard">
+                <div class="toolbar">
+                    <div>
+                        <h2 style="margin-bottom: 4px;">История изменений</h2>
+                        <div class="muted">Ручка: <code>GET /items/:id/audit</code></div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Item ID</th>
+                            <th>Action</th>
+                            <th>Old Data</th>
+                            <th>New Data</th>
+                            <th>Changed By</th>
+                            <th>Role</th>
+                            <th>Changed At</th>
+                        </tr>
+                        </thead>
+                        <tbody id="auditTableBody">
+                        <tr><td colspan="8" class="empty">Выбери товар кнопкой «История».</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="auditNotice" class="notice"></div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'http://localhost:8080';
+
+    const state = {
+        token: '',
+        user: null,
+        selectedAuditItemId: null,
+    };
+
+    const els = {
+        loginUsername: document.getElementById('loginUsername'),
+        loginPassword: document.getElementById('loginPassword'),
+        loginBtn: document.getElementById('loginBtn'),
+        loginNotice: document.getElementById('loginNotice'),
+        sessionBadge: document.getElementById('sessionBadge'),
+        sessionUser: document.getElementById('sessionUser'),
+        sessionRole: document.getElementById('sessionRole'),
+        logoutBtn: document.getElementById('logoutBtn'),
+
+        itemFormCard: document.getElementById('itemFormCard'),
+        auditCard: document.getElementById('auditCard'),
+        itemId: document.getElementById('itemId'),
+        itemTitle: document.getElementById('itemTitle'),
+        itemSku: document.getElementById('itemSku'),
+        itemQuantity: document.getElementById('itemQuantity'),
+        saveItemBtn: document.getElementById('saveItemBtn'),
+        resetItemBtn: document.getElementById('resetItemBtn'),
+        formTitle: document.getElementById('formTitle'),
+        formHint: document.getElementById('formHint'),
+        itemNotice: document.getElementById('itemNotice'),
+
+        refreshItemsBtn: document.getElementById('refreshItemsBtn'),
+        itemsTableBody: document.getElementById('itemsTableBody'),
+        itemsNotice: document.getElementById('itemsNotice'),
+
+        auditTableBody: document.getElementById('auditTableBody'),
+        auditNotice: document.getElementById('auditNotice'),
+    };
+
+    function showNotice(el, message, type = 'ok') {
+        el.textContent = message;
+        el.className = `notice ${type}`;
+        el.style.display = 'block';
+    }
+
+    function hideNotice(el) {
+        el.textContent = '';
+        el.className = 'notice';
+        el.style.display = 'none';
+    }
+
+    function authHeaders(extra = {}) {
+        const headers = { ...extra };
+        if (state.token) headers.Authorization = `Bearer ${state.token}`;
+        return headers;
+    }
+
+    function canEdit() {
+        return state.user && (state.user.role === 'admin' || state.user.role === 'manager');
+    }
+
+    function canDelete() {
+        return state.user && state.user.role === 'admin';
+    }
+
+    function canViewAudit() {
+        return state.user && state.user.role === 'admin';
+    }
+
+    function updateSessionUI() {
+        if (state.user) {
+            els.sessionBadge.style.display = 'flex';
+            els.sessionUser.textContent = state.user.username;
+            els.sessionRole.textContent = `role: ${state.user.role}`;
+        } else {
+            els.sessionBadge.style.display = 'none';
+        }
+
+        els.itemFormCard.style.display = canEdit() ? 'block' : 'none';
+        els.auditCard.style.display = canViewAudit() ? 'block' : 'none';
+    }
+
+    function formatDate(value) {
+        if (!value) return '—';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString('ru-RU');
+    }
+
+    function safeJson(value) {
+        try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+    }
+
+    async function apiFetch(path, options = {}) {
+        const response = await fetch(`${API_BASE}${path}`, options);
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+        if (!response.ok) {
+            const error = new Error(data?.error || `HTTP ${response.status}`);
+            error.status = response.status;
+            throw error;
+        }
+        if (response.status === 204) return null;
+        return data;
+    }
+
+    function resetItemForm() {
+        els.itemId.value = '';
+        els.itemTitle.value = '';
+        els.itemSku.value = '';
+        els.itemQuantity.value = '';
+        els.formTitle.textContent = 'Создать товар';
+        hideNotice(els.itemNotice);
+    }
+
+    function renderItems(items) {
+        if (!items || items.length === 0) {
+            els.itemsTableBody.innerHTML = '<tr><td colspan="7" class="empty">Товаров пока нет.</td></tr>';
+            return;
+        }
+
+        els.itemsTableBody.innerHTML = items.map(item => {
+            const buttons = [];
+            if (canViewAudit()) buttons.push(`<button class="btn-primary" data-action="audit" data-id="${item.id}">История</button>`);
+            if (canEdit()) buttons.push(`<button class="btn-warning" data-action="edit" data-id="${item.id}">Редактировать</button>`);
+            if (canDelete()) buttons.push(`<button class="btn-danger" data-action="delete" data-id="${item.id}">Удалить</button>`);
+
+            return `
+          <tr>
+            <td>${item.id}</td>
+            <td>${escapeHtml(item.title)}</td>
+            <td>${escapeHtml(item.sku)}</td>
+            <td>${item.quantity}</td>
+            <td>${formatDate(item.created_at || item.createdAt)}</td>
+            <td>${formatDate(item.updated_at || item.updatedAt)}</td>
+            <td><div class="mini-actions">${buttons.join('')}</div></td>
+          </tr>
+        `;
+        }).join('');
+
+        els.itemsTableBody.querySelectorAll('[data-action="edit"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = Number(btn.dataset.id);
+                const row = items.find(item => item.id === id);
+                if (!row) return;
+                els.itemId.value = String(row.id);
+                els.itemTitle.value = row.title;
+                els.itemSku.value = row.sku;
+                els.itemQuantity.value = String(row.quantity);
+                els.formTitle.textContent = `Редактировать товар #${row.id}`;
+                hideNotice(els.itemNotice);
+            });
+        });
+
+        els.itemsTableBody.querySelectorAll('[data-action="delete"]').forEach(btn => {
+            btn.addEventListener('click', () => handleDelete(Number(btn.dataset.id)));
+        });
+
+        els.itemsTableBody.querySelectorAll('[data-action="audit"]').forEach(btn => {
+            btn.addEventListener('click', () => loadAudit(Number(btn.dataset.id)));
+        });
+    }
+
+    function renderAudit(rows) {
+        if (!rows || rows.length === 0) {
+            els.auditTableBody.innerHTML = '<tr><td colspan="8" class="empty">История для этого товара пуста.</td></tr>';
+            return;
+        }
+
+        els.auditTableBody.innerHTML = rows.map(row => `
+        <tr>
+          <td>${row.id}</td>
+          <td>${row.item_id}</td>
+          <td>${escapeHtml(row.action)}</td>
+          <td><div class="json-box">${escapeHtml(safeJson(row.old_data))}</div></td>
+          <td><div class="json-box">${escapeHtml(safeJson(row.new_data))}</div></td>
+          <td>${escapeHtml(row.changed_by_username || '—')}</td>
+          <td>${escapeHtml(row.changed_by_role || '—')}</td>
+          <td>${formatDate(row.changed_at)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    async function login() {
+        hideNotice(els.loginNotice);
+        hideNotice(els.itemsNotice);
+        hideNotice(els.itemNotice);
+        hideNotice(els.auditNotice);
+
+        try {
+            const data = await apiFetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: els.loginUsername.value, password: els.loginPassword.value }),
+            });
+
+            state.token = data.token;
+            state.user = { username: data.username, role: data.role };
+            updateSessionUI();
+            showNotice(els.loginNotice, `Вход выполнен: ${data.username} (${data.role})`, 'ok');
+            await loadItems();
+            els.auditTableBody.innerHTML = '<tr><td colspan="8" class="empty">Выбери товар кнопкой «История».</td></tr>';
+        } catch (err) {
+            showNotice(els.loginNotice, err.message || 'Ошибка входа', 'err');
+        }
+    }
+
+    function logout() {
+        state.token = '';
+        state.user = null;
+        state.selectedAuditItemId = null;
+        updateSessionUI();
+        resetItemForm();
+        els.itemsTableBody.innerHTML = '<tr><td colspan="7" class="empty">Сначала выполните вход.</td></tr>';
+        els.auditTableBody.innerHTML = '<tr><td colspan="8" class="empty">Выбери товар кнопкой «История».</td></tr>';
+        showNotice(els.loginNotice, 'Вы вышли из системы', 'ok');
+    }
+
+    async function loadItems() {
+        if (!state.token) return;
+        hideNotice(els.itemsNotice);
+        try {
+            const items = await apiFetch('/items', { method: 'GET', headers: authHeaders() });
+            renderItems(items);
+        } catch (err) {
+            showNotice(els.itemsNotice, err.message || 'Ошибка загрузки товаров', 'err');
+        }
+    }
+
+    async function saveItem() {
+        if (!canEdit()) return;
+        hideNotice(els.itemNotice);
+
+        const id = els.itemId.value.trim();
+        const payload = {
+            title: els.itemTitle.value.trim(),
+            sku: els.itemSku.value.trim(),
+            quantity: Number(els.itemQuantity.value),
+        };
+
+        try {
+            if (id) {
+                await apiFetch(`/items/${id}`, {
+                    method: 'PUT',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payload),
+                });
+                showNotice(els.itemNotice, `Товар #${id} обновлён`, 'ok');
+            } else {
+                const created = await apiFetch('/items', {
+                    method: 'POST',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payload),
+                });
+                showNotice(els.itemNotice, `Товар #${created.id} создан`, 'ok');
+            }
+            resetItemForm();
+            await loadItems();
+        } catch (err) {
+            showNotice(els.itemNotice, err.message || 'Ошибка сохранения товара', 'err');
+        }
+    }
+
+    async function handleDelete(id) {
+        if (!canDelete()) return;
+        if (!window.confirm(`Удалить товар #${id}?`)) return;
+
+        hideNotice(els.itemsNotice);
+        try {
+            await apiFetch(`/items/${id}`, { method: 'DELETE', headers: authHeaders() });
+            showNotice(els.itemsNotice, `Товар #${id} удалён`, 'ok');
+            await loadItems();
+        } catch (err) {
+            showNotice(els.itemsNotice, err.message || 'Ошибка удаления', 'err');
+        }
+    }
+
+    async function loadAudit(itemId) {
+        state.selectedAuditItemId = itemId;
+        hideNotice(els.auditNotice);
+        if (!canViewAudit()) return;
+
+        try {
+            const rows = await apiFetch(`/items/${itemId}/audit`, { method: 'GET', headers: authHeaders() });
+            renderAudit(rows);
+        } catch (err) {
+            showNotice(els.auditNotice, err.message || 'Ошибка загрузки истории', 'err');
+        }
+    }
+
+    els.loginBtn.addEventListener('click', login);
+    els.logoutBtn.addEventListener('click', logout);
+    els.refreshItemsBtn.addEventListener('click', loadItems);
+    els.saveItemBtn.addEventListener('click', saveItem);
+    els.resetItemBtn.addEventListener('click', resetItemForm);
+
+    updateSessionUI();
+</script>
+</body>
+</html>

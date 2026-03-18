@@ -65,7 +65,9 @@ func main() {
 	auditService := service.NewAuditService(auditRepo)
 	auditHandler := handlers.NewAuditHandler(auditService)
 
-	router := ginext.New("debug")
+	router := ginext.New("release")
+
+	router.StaticFile("/web", "../web/index.html")
 
 	router.POST("/auth/login", loginHandler.Login)
 	router.GET("/me", authMiddleware.Auth(), middleware.RequireRoles("admin"), authHandler.Me)
