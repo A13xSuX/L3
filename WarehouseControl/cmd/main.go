@@ -61,6 +61,9 @@ func main() {
 	itemRepo := repository.NewItemRepository(db)
 	itemService := service.NewItemService(itemRepo)
 	itemHandler := handlers.NewItemHandler(itemService)
+	auditRepo := repository.NewAuditRepository(db)
+	auditService := service.NewAuditService(auditRepo)
+	auditHandler := handlers.NewAuditHandler(auditService)
 
 	router := ginext.New("debug")
 
@@ -70,6 +73,7 @@ func main() {
 	router.GET("/items", authMiddleware.Auth(), middleware.RequireRoles("admin", "manager", "viewer"), itemHandler.GetAll)
 	router.PUT("/items/:id", authMiddleware.Auth(), middleware.RequireRoles("admin", "manager"), itemHandler.Update)
 	router.DELETE("/items/:id", authMiddleware.Auth(), middleware.RequireRoles("admin"), itemHandler.Delete)
+	router.GET("/items/:id/audit", authMiddleware.Auth(), middleware.RequireRoles("admin"), auditHandler.GetByItemID)
 
 	if err := router.Run(cfg.ServerConfig.Addr); err != nil {
 		zlog.Logger.Error().Err(err).Msg("server failed")

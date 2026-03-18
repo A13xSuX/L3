@@ -8,4 +8,5 @@ var (
 	ErrTitleEmpty          = errors.New("title is empty")
 	ErrSkuEmpty            = errors.New("sku is empty")
 	ErrQuantityNotPositive = errors.New("quantity cannot be negative")
+	ErrUnauthorized        = errors.New("user unauthorized")
 )

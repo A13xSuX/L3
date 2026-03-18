@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"l3/WarehouseControl/internal/customErrs"
 	"l3/WarehouseControl/internal/models"
+	"strconv"
 
 	"github.com/wb-go/wbf/dbpg"
 )
@@ -18,12 +20,30 @@ func NewItemRepository(db *dbpg.DB) *ItemRepository {
 	}
 }
 
-func (r *ItemRepository) Create(ctx context.Context, item *models.Item) error {
+func (r *ItemRepository) Create(ctx context.Context, user *models.CurrentUser, item *models.Item) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = r.setAuditContext(ctx, tx, user)
+	if err != nil {
+		return err
+	}
 	query := `INSERT INTO items (title, sku, quantity) 
 				VALUES ($1, $2, $3)
 				RETURNING id, created_at, updated_at`
-	row := r.db.QueryRowContext(ctx, query, item.Title, item.Sku, item.Quantity)
-	return row.Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
+	row := tx.QueryRowContext(ctx, query, item.Title, item.Sku, item.Quantity)
+	err = row.Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *ItemRepository) GetAll(ctx context.Context) ([]models.Item, error) {
@@ -56,14 +76,23 @@ func (r *ItemRepository) GetAll(ctx context.Context) ([]models.Item, error) {
 	return items, nil
 }
 
-func (r *ItemRepository) Update(ctx context.Context, id int64, newItem *models.Item) error {
+func (r *ItemRepository) Update(ctx context.Context, user *models.CurrentUser, id int64, newItem *models.Item) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	err = r.setAuditContext(ctx, tx, user)
+	if err != nil {
+		return err
+	}
 	query := `UPDATE items
 			SET title = $1,
 				sku = $2,
 				quantity = $3,
 				updated_at = NOW()
 			WHERE id = $4`
-	res, err := r.db.ExecContext(ctx, query, newItem.Title, newItem.Sku, newItem.Quantity, id)
+	res, err := tx.ExecContext(ctx, query, newItem.Title, newItem.Sku, newItem.Quantity, id)
 	if err != nil {
 		return err
 	}
@@ -73,14 +102,28 @@ func (r *ItemRepository) Update(ctx context.Context, id int64, newItem *models.I
 	}
 	if rowsAffected == 0 {
 		return customErrs.ErrNotFoundID
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
-func (r *ItemRepository) Delete(ctx context.Context, id int64) error {
+func (r *ItemRepository) Delete(ctx context.Context, user *models.CurrentUser, id int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = r.setAuditContext(ctx, tx, user)
+	if err != nil {
+		return err
+	}
 	query := `DELETE FROM items
 				WHERE id = $1`
-	res, err := r.db.ExecContext(ctx, query, id)
+	res, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
@@ -91,5 +134,25 @@ func (r *ItemRepository) Delete(ctx context.Context, id int64) error {
 	if rowsAffected == 0 {
 		return customErrs.ErrNotFoundID
 	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func (r *ItemRepository) setAuditContext(ctx context.Context, tx *sql.Tx, user *models.CurrentUser) error {
+	if user == nil {
+		return customErrs.ErrUnauthorized
+	}
+	_, err := tx.ExecContext(ctx,
+		`SELECT
+				set_config('app.current_user_id', $1, true),
+				set_config('app.current_username', $2, true),
+				set_config('app.current_role', $3, true)`,
+		strconv.FormatInt(user.UserID, 10),
+		user.Username,
+		user.Role,
+	)
+	return err
 }

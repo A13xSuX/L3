@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"l3/WarehouseControl/internal/customErrs"
+	"l3/WarehouseControl/internal/middleware"
 	"l3/WarehouseControl/internal/models"
 	"l3/WarehouseControl/internal/repository"
 )
@@ -18,6 +19,10 @@ func NewItemService(itemRepo *repository.ItemRepository) *ItemService {
 }
 
 func (s *ItemService) Create(ctx context.Context, itemReq *models.CreateItemRequest) (*models.ItemResponse, error) {
+	user, ok := middleware.GetCurrentUser(ctx)
+	if !ok {
+		return nil, customErrs.ErrUnauthorized
+	}
 	if itemReq.Title == "" {
 		return nil, customErrs.ErrTitleEmpty
 	}
@@ -34,7 +39,7 @@ func (s *ItemService) Create(ctx context.Context, itemReq *models.CreateItemRequ
 		Quantity: itemReq.Quantity,
 	}
 
-	err := s.ItemRepo.Create(ctx, &item)
+	err := s.ItemRepo.Create(ctx, user, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +52,7 @@ func (s *ItemService) Create(ctx context.Context, itemReq *models.CreateItemRequ
 		CreatedAt: item.CreatedAt,
 		UpdatedAt: item.UpdatedAt,
 	}
-	return &resp, err
+	return &resp, nil
 }
 
 func (s *ItemService) GetAll(ctx context.Context) ([]models.ItemResponse, error) {
@@ -71,6 +76,10 @@ func (s *ItemService) GetAll(ctx context.Context) ([]models.ItemResponse, error)
 }
 
 func (s *ItemService) Update(ctx context.Context, id int64, itemReq *models.UpdateItemRequest) error {
+	user, ok := middleware.GetCurrentUser(ctx)
+	if !ok {
+		return customErrs.ErrUnauthorized
+	}
 	if itemReq.Title == "" {
 		return customErrs.ErrTitleEmpty
 	}
@@ -85,10 +94,14 @@ func (s *ItemService) Update(ctx context.Context, id int64, itemReq *models.Upda
 		Sku:      itemReq.Sku,
 		Quantity: itemReq.Quantity,
 	}
-	err := s.ItemRepo.Update(ctx, id, item)
+	err := s.ItemRepo.Update(ctx, user, id, item)
 	return err
 }
 
 func (s *ItemService) Delete(ctx context.Context, id int64) error {
-	return s.ItemRepo.Delete(ctx, id)
+	user, ok := middleware.GetCurrentUser(ctx)
+	if !ok {
+		return customErrs.ErrUnauthorized
+	}
+	return s.ItemRepo.Delete(ctx, user, id)
 }
